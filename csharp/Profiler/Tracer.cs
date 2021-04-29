@@ -3,9 +3,12 @@ using HarmonyLib;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Management.Automation;
 using System.Management.Automation.Language;
 using System.Reflection;
+using System.Threading;
+using Debugger = System.Diagnostics.Debugger;
 
 namespace Profiler
 {
@@ -14,11 +17,14 @@ namespace Profiler
         internal static ProfileEventRecord _previousHit;
         internal static int _index = 0;
         private static PropertyInfo _currentPositionProperty;
+        private static Func<int> GetLevel;
 
         public static List<ProfileEventRecord> Hits { get; } = new List<ProfileEventRecord>();
 
         public static void PatchOrUnpatch(EngineIntrinsics context, bool patch, bool useBp)
         {
+            Dbg.WaitForDebugger();
+
             if (patch)
             {
                 _previousHit = default;
@@ -40,6 +46,20 @@ namespace Profiler
                 var contextInternal = context.GetType().GetField("_context", bf).GetValue(context);
                 var debugger = contextInternal.GetType().GetProperty("Debugger", bf).GetValue(contextInternal);
                 var debuggerType = debugger.GetType();
+
+                var callStackField = debuggerType.GetField("_callStack", BindingFlags.Instance | BindingFlags.NonPublic);
+                var _callStack = callStackField.GetValue(debugger);
+
+                var callStackType = _callStack.GetType();
+
+                var countProperty = callStackType.GetProperty("Count", BindingFlags.Instance | BindingFlags.NonPublic);
+                var getCount = countProperty.GetMethod;
+                var empty = new object[0];
+                var stack = callStackField.GetValue(debugger);
+                var initialLevel = (int)getCount.Invoke(stack, empty);
+                GetLevel = () => { return (int)getCount.Invoke(callStackField.GetValue(debugger), empty) - initialLevel; };
+
+
                 if (!useBp)
                 {
                     BindingFlags bindingAttr = BindingFlags.Instance | BindingFlags.NonPublic;
@@ -74,7 +94,7 @@ namespace Profiler
 
             var extent = (IScriptExtent)_currentPositionProperty.GetValue(functionContext);
             Trace(extent);
-            
+
             // skip
             return false;
         }
@@ -90,6 +110,8 @@ namespace Profiler
 
         public static void Trace(IScriptExtent extent)
         {
+            
+
             var timestamp = Stopwatch.GetTimestamp();
             // we are using structs so we need to insert the final struct to the 
             // list instead of inserting it to the list, and keeping reference to modify it later
@@ -116,8 +138,9 @@ namespace Profiler
                 EndColumnNumber = extent.EndColumnNumber,
                 Text = extent.Text,
                 StartOffset = extent.StartOffset,
-                EndOffset = extent.EndOffset
+                EndOffset = extent.EndOffset,
             };
+            Tracer._previousHit.Level = GetLevel();
 
             _index++;
         }
@@ -126,6 +149,31 @@ namespace Profiler
         {
             eventRecord.Duration = TimeSpan.FromTicks(timestamp - eventRecord.Timestamp);
             Tracer.Hits.Add(eventRecord);
+        }
+    }
+
+    internal static class Dbg
+    {
+        static bool _triggered = false;
+
+        public static void WaitForDebugger()
+        {
+            if (_triggered)
+                return;
+
+            var debug = Environment.GetEnvironmentVariable("PROFILER_DEBUG")?.ToLowerInvariant();
+            if (!new[] { "on", "yes", "true", "1" }.Contains(debug))
+                return;
+
+            while (!Debugger.IsAttached)
+            {
+                var process = Process.GetCurrentProcess();
+                Console.WriteLine($"Waiting for debugger {process.Id} - {process.ProcessName}");
+                Thread.Sleep(1000);
+            }
+
+            _triggered = true;
+            Debugger.Break();
         }
     }
 }

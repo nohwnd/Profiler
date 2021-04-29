@@ -17,6 +17,7 @@ namespace Profiler
         /// Duration of event.
         /// </summary>
         public TimeSpan Duration;
+        public TimeSpan CallDuration;
 
         /// <summary>
         /// Script text.
@@ -54,5 +55,17 @@ namespace Profiler
         public string Text => Extent.Text;
         public long Timestamp => StartTime.Ticks;
 
+        public int Level;
+
+        public CallReturnProcess Flow;
+
+        public int ReturnIndex;
+    }
+
+    public enum CallReturnProcess
+    {
+        Process = 0,
+        Call,
+        Return,
     }
 }

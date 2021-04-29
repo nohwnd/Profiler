@@ -25,7 +25,8 @@ function Trace-Script {
 
     $trace = Trace-ScriptInternal -ScriptBlock $ScriptBlock -Preheat $Preheat -DisableWarning:$DisableWarning -Feature $Feature -UseNativePowerShell7Profiler:$UseNativePowerShell7Profiler -Before:$Before
 
-    Write-Host -ForegroundColor Magenta "Processing $($trace.Count) trace events. $(if (1000000 -lt $trace.Count) { " This might take a while..."})"
+    $traceCount = $trace.Count
+    Write-Host -ForegroundColor Magenta "Processing $($traceCount) trace events. $(if (1000000 -lt $traceCount) { " This might take a while..."})"
     if ($null -ne $FilterPath -and 0 -lt @($FilterPath).Count) {
         $files = $Path | ForEach-Object { (Resolve-Path $_).Path }
     }
@@ -55,6 +56,8 @@ function Trace-Script {
                     HitCount    = 0 
                     Duration    = [TimeSpan]::Zero
                     Average     = [TimeSpan]::Zero
+                    CallDuration =  [TimeSpan]::Zero
+                    AverageCall =  [TimeSpan]::Zero
 
                     Name        = $name
                     Line        = ++$index # start from 1 as in file
@@ -75,6 +78,50 @@ function Trace-Script {
         }
     }
 
+    Write-Host -ForegroundColor Magenta "Calculating duration per line."
+    $stack = [System.Collections.Generic.Stack[int]]::new()
+    foreach ($hit in $trace) {
+        # there is next item in the trace
+        if ($hit.Index -lt $traceCount - 2) { 
+            $nextHit = $trace[$hit.Index+1]            
+            if ($nextHit.Level -gt $hit.Level) {
+                $hit.Flow = 1 # call
+                # we go down, save where we diverged
+                $stack.Push($hit.Index)
+                # Write-Host -nonewline "call $l -> $($hit.Extent.Text)"
+            }
+            elseif ($nextHit.Level -lt $hit.Level) {
+                # return
+                $hit.Flow = 2
+                # we go up, and we might jump up
+                # get all the calls down and diff them against
+                # this
+                while ($stack.Count -ge $hit.Level) {
+                    $callIndex = $stack.Pop()
+                    $call = $trace[$callIndex]
+                    # own duration + duration of all called
+                    $call.CallDuration = [TimeSpan]::FromTicks($hit.Duration.Ticks + ($hit.Timestamp - $call.Timestamp))
+                    # save where we returned from this function so we can query the log and see what is slow
+                    $call.ReturnIndex = $hit.Index
+                    # those are structs and we can't grab it by ref from the list
+                    # so we just overwrite
+                    $trace[$callIndex] = $call
+                    # Write-Host "    call to $($trace[$callIndex].Extent.Text) took $($trace[$callIndex].CallDuration)" 
+                }
+                # Write-Host "return $l -> $($hit.Extent.Text)"
+            }
+            else { 
+                $hit.Flow = 1
+                $hit.CallDuration = $hit.Duration
+                # Write-Host "process $l -> $($hit.Extent.Text)"
+            }
+
+            # those are structs and we can't grab it by ref from the list
+            # so we just overwrite
+            $trace[$hit.Index] = $hit
+        }
+    }
+
     Write-Host -ForegroundColor Magenta "Sorting trace events to file lines."
     foreach ($hit in $trace) {
         if (-not $hit.Path -or -not ($fileMap.Contains($hit.Path))) {
@@ -86,6 +133,7 @@ function Trace-Script {
 
         $lineProfile = $lineProfiles[$hit.Line - 1] # array indexes from 0, but lines from 1
         $lineProfile.Duration += $hit.Duration
+        $lineProfile.CallDuration += $hit.CallDuration
         $lineProfile.HitCount++
         $lineProfile.Hits.Add($hit)
 
@@ -94,6 +142,7 @@ function Trace-Script {
         if ($lineProfile.CommandHits.ContainsKey($hit.Column)) { 
             $commandHit = $lineProfile.CommandHits[$hit.Column] 
             $commandHit.Duration += $hit.Duration
+            $commandHit.CallDuration += $hit.CallDuration
             $commandHit.HitCount++
         }
         else { 
@@ -101,6 +150,7 @@ function Trace-Script {
                 Line     = $hit.Line # start from 1 as in file
                 Column   = $hit.Column
                 Duration = $hit.Duration
+                CallDuration = $hit.CallDuration
                 HitCount = 1
                 Text     = $hit.Text
             }
@@ -108,13 +158,14 @@ function Trace-Script {
         }
     }
 
-    $total = [TimeSpan]::FromTicks($trace[-1].Timestamp - $trace[0].Timestamp)
+    $total = if ($null -ne $trace -and 0 -lt @($trace).Count) { [TimeSpan]::FromTicks($trace[-1].Timestamp - $trace[0].Timestamp) } else { [TimeSpan]::Zero }
 
     Write-Host -ForegroundColor Magenta "Counting averages and percentages."
     # this is like SelectMany, it joins the arrays of arrays
     # into a single array
-    $all = $fileMap.Values | Foreach-Object { $_ } | ForEach-Object { 
+    $all = $fileMap.Values | Foreach-Object { $_ } | ForEach-Object {
         $_.Average = if ($_.HitCount -eq 0) { [TimeSpan]::Zero } else { [TimeSpan]::FromTicks($_.Duration.Ticks / $_.HitCount) }
+        $_.AverageCall = if ($_.HitCount -eq 0) { [TimeSpan]::Zero } else { [TimeSpan]::FromTicks($_.CallDuration.Ticks / $_.HitCount) }
         $_.Percent = [Math]::Round($_.Duration.Ticks / $total.Ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
         $_
     }
@@ -139,6 +190,20 @@ function Trace-Script {
     Where-Object Duration -gt 0 | 
     Sort-Object -Property Duration -Descending | 
     Select-Object -First 50
+
+    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest average duration for the whole line."
+
+    $top50Average = $all | 
+    Where-Object AverageCall -gt 0 | 
+    Sort-Object -Property AverageCall -Descending | 
+    Select-Object -First 50
+        
+    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest duration for the whole line.."
+
+    $top50Duration = $all |
+    Where-Object CallDuration -gt 0 | 
+    Sort-Object -Property CallDuration -Descending | 
+    Select-Object -First 50
     
     Write-Host -ForegroundColor Magenta "Getting Top50 with the most hits."
 
@@ -152,6 +217,8 @@ function Trace-Script {
         Top50Average  = $top50Average
         Top50Duration = $top50Duration
         Top50HitCount = $top50HitCount
+        Top50CallDuration = $top50CallDuration
+        Top50CallDurationAverage = $top50CallDurationAverage
         TotalDuration = $total
         All           = $all
         Events        = $trace
@@ -222,6 +289,85 @@ function Get-LatestTrace {
         $script:processedTrace
     }
     else { 
-        Write-Warning "But there is no trace yet. This command is here to get the trace when you forgot to output it to variable. Run Trace-Script, ideally $trace = Trace-Script -ScriptBlock { & yourfile.ps1 }, and you won't need this cmdlet at all."
+        Write-Warning "There is no trace yet. Run Trace-Script. For example Trace-Script -ScriptBlock { & yourfile.ps1 }."
+    }
+}
+
+
+function Show-ScriptExecution {
+    # .DESCRIPTION Show how the script executed with margin to show how deep the call was, this is just for fun. 
+    # You can slow down the excution x times to reflect the mimic the real execution delays.
+    [CmdletBinding()]
+    param(
+        $Trace,
+        [switch] $x1,
+        [switch] $x10,
+        [switch] $x100,
+        [switch] $x1000 # ,
+        # [switch] $Color
+    )
+
+    $trace = if ($Trace) { $Trace } else { Get-LatestTrace }
+
+    $x = if ($x1000) { 
+        1000
+    }
+    elseif ($x100) { 
+        100
+    }
+    elseif ($x10) { 
+        10
+    }
+    elseif ($x1) {
+        1
+    }
+    else {
+        0
+    }
+
+    $c = [bool] $Color
+    if ($c) {
+        # https://www.reddit.com/r/PowerShell/comments/b06gtw/til_that_powershell_can_do_colors/
+        # ANSI escape character
+        $r = 0
+        $g = 0
+        $b = 0
+        $ansi_escape = [char]27
+    }
+
+    foreach ($e in $trace.Events) { 
+        $text = $e.Extent.Text.Trim()
+        $o = "$ansi_escape[48;2;$r;$g;${b}m$text$ansi_escape[0m"
+        $margin = ' ' * ($e.Level)
+        Write-Host "$margin$o"
+        if (0 -lt $x) {
+            # this is fun, but hardly accurate, as the resolution is <15ms
+            # and many lines take <0.001ms
+            [System.Threading.Thread]::Sleep($e.Duration * $x)
+        }
+
+
+        if ($c) {
+    
+                $r++
+
+                if (254 -eq $r) {
+                    $r = 0                     
+                    $g++
+
+                    if (254 -eq $g) { 
+                        $g = 0
+                        $b++ 
+
+                        if (254 -eq $b) { 
+                            $r = 0
+                            $g = 0
+                            $b = 0
+                        }
+                    }
+                }
+          
+            "$r $g $b"
+        }
     }
 }
