@@ -115,7 +115,7 @@ function Trace-ScriptInternal {
             $e.EndOffset = $t.Extent.EndOffset
             $r.Extent = $e
             $r.StartTime = $t.StartTime
-            $r.Duration = $t.Duration
+            $r.SelfDuration = $t.SelfDuration
             $r.Index = $index
 
             $index++

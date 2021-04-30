@@ -52,19 +52,19 @@ function Trace-Script {
             $index = 0
             foreach ($line in $lines) {
                 $lineProfile = [PSCustomObject] @{
-                    Percent     = 0
-                    HitCount    = 0 
-                    Duration    = [TimeSpan]::Zero
-                    Average     = [TimeSpan]::Zero
-                    CallDuration =  [TimeSpan]::Zero
-                    AverageCall =  [TimeSpan]::Zero
+                    Percent      = 0
+                    HitCount     = 0 
+                    Duration     = [TimeSpan]::Zero
+                    Average      = [TimeSpan]::Zero
+                    SelfDuration = [TimeSpan]::Zero
+                    SelfAverage  = [TimeSpan]::Zero
 
-                    Name        = $name
-                    Line        = ++$index # start from 1 as in file
-                    Text        = $line
-                    Path        = $file
-                    Hits        = [Collections.Generic.List[object]]::new()
-                    CommandHits = @{}
+                    Name         = $name
+                    Line         = ++$index # start from 1 as in file
+                    Text         = $line
+                    Path         = $file
+                    Hits         = [Collections.Generic.List[object]]::new()
+                    CommandHits  = @{}
                 }
 
                 $lineProfiles.Add($lineProfile)
@@ -78,47 +78,59 @@ function Trace-Script {
         }
     }
 
-    Write-Host -ForegroundColor Magenta "Calculating duration per line."
+    Write-Host -ForegroundColor Magenta "Calculating Duration per line."
     $stack = [System.Collections.Generic.Stack[int]]::new()
-    foreach ($hit in $trace) {
-        # there is next item in the trace
-        if ($hit.Index -lt $traceCount - 2) { 
-            $nextHit = $trace[$hit.Index+1]            
-            if ($nextHit.Level -gt $hit.Level) {
-                $hit.Flow = 1 # call
-                # we go down, save where we diverged
-                $stack.Push($hit.Index)
-                # Write-Host -nonewline "call $l -> $($hit.Extent.Text)"
+    foreach ($event in $trace) {
+        # there is next event in the trace, 
+        # we can use it to see if we remained in the 
+        # function or returned
+        if ($event.Index -lt $traceCount - 2) {
+            $nextEvent = $trace[$event.Index + 1]
+            # the next event has higher number on the callstack
+            # we are going down into a function, meaning this is a call
+            if ($nextEvent.Level -gt $event.Level) {
+                $event.Flow = [Profiler.CallReturnProcess]::Call
+                # save where we entered 
+                $stack.Push($event.Index)
             }
-            elseif ($nextHit.Level -lt $hit.Level) {
-                # return
-                $hit.Flow = 2
-                # we go up, and we might jump up
-                # get all the calls down and diff them against
-                # this
-                while ($stack.Count -ge $hit.Level) {
+            elseif ($nextEvent.Level -lt $event.Level) {
+                $event.Flow = [Profiler.CallReturnProcess]::Return
+                # we go up, back from a function and we might jump up
+                # for example when throw happens and we end up in try catch
+                # that is x levels up
+                # get all the calls that happened up until this level
+                # and diff them against this to set their durations
+                while ($stack.Count -ge $event.Level) {
                     $callIndex = $stack.Pop()
                     $call = $trace[$callIndex]
-                    # own duration + duration of all called
-                    $call.CallDuration = [TimeSpan]::FromTicks($hit.Duration.Ticks + ($hit.Timestamp - $call.Timestamp))
-                    # save where we returned from this function so we can query the log and see what is slow
-                    $call.ReturnIndex = $hit.Index
+                    # events are timestamped at the start, so start of when we called until 
+                    # the next one after we returned is the duration of the whole call
+                    $call.Duration = [TimeSpan]::FromTicks($nextEvent.Timestamp - $call.Timestamp)
+                    # save into the call where it returned so we can see the events in the
+                    # meantime and see what was actually slow
+                    $call.ReturnIndex = $event.Index
                     # those are structs and we can't grab it by ref from the list
                     # so we just overwrite
                     $trace[$callIndex] = $call
-                    # Write-Host "    call to $($trace[$callIndex].Extent.Text) took $($trace[$callIndex].CallDuration)" 
                 }
-                # Write-Host "return $l -> $($hit.Extent.Text)"
+
+                # return from a function is not calling anything 
+                # so the duration and self duration are the same
+                $event.Duration = $event.SelfDuration
+                $event.ReturnIndex = $event.Index
             }
             else { 
-                $hit.Flow = 1
-                $hit.CallDuration = $hit.Duration
-                # Write-Host "process $l -> $($hit.Extent.Text)"
+                # we stay in the function in the next step, so we did 
+                # not call anyone or did not return, we are just processing
+                # the duration is the selfduration
+                $event.Flow = [Profiler.CallReturnProcess]::Process
+                $event.Duration = $event.SelfDuration
+                $event.ReturnIndex = $event.Index
             }
-
+        
             # those are structs and we can't grab it by ref from the list
             # so we just overwrite
-            $trace[$hit.Index] = $hit
+            $trace[$event.Index] = $event
         }
     }
 
@@ -132,8 +144,8 @@ function Trace-Script {
         $lineProfiles = $fileMap[$hit.Path]
 
         $lineProfile = $lineProfiles[$hit.Line - 1] # array indexes from 0, but lines from 1
+        $lineProfile.SelfDuration += $hit.SelfDuration
         $lineProfile.Duration += $hit.Duration
-        $lineProfile.CallDuration += $hit.CallDuration
         $lineProfile.HitCount++
         $lineProfile.Hits.Add($hit)
 
@@ -141,18 +153,18 @@ function Trace-Script {
         # on the same line (like we did it with the Group-Object on foreach ($i in 1...1000))
         if ($lineProfile.CommandHits.ContainsKey($hit.Column)) { 
             $commandHit = $lineProfile.CommandHits[$hit.Column] 
+            $commandHit.SelfDuration += $hit.SelfDuration
             $commandHit.Duration += $hit.Duration
-            $commandHit.CallDuration += $hit.CallDuration
             $commandHit.HitCount++
         }
         else { 
             $commandHit = [PSCustomObject] @{
-                Line     = $hit.Line # start from 1 as in file
-                Column   = $hit.Column
-                Duration = $hit.Duration
-                CallDuration = $hit.CallDuration
-                HitCount = 1
-                Text     = $hit.Text
+                Line         = $hit.Line # start from 1 as in file
+                Column       = $hit.Column
+                SelfDuration = $hit.SelfDuration
+                Duration     = $hit.Duration
+                HitCount     = 1
+                Text         = $hit.Text
             }
             $lineProfile.CommandHits.Add($hit.Column, $commandHit)
         }
@@ -164,8 +176,8 @@ function Trace-Script {
     # this is like SelectMany, it joins the arrays of arrays
     # into a single array
     $all = $fileMap.Values | Foreach-Object { $_ } | ForEach-Object {
+        $_.SelfAverage = if ($_.HitCount -eq 0) { [TimeSpan]::Zero } else { [TimeSpan]::FromTicks($_.SelfDuration.Ticks / $_.HitCount) }
         $_.Average = if ($_.HitCount -eq 0) { [TimeSpan]::Zero } else { [TimeSpan]::FromTicks($_.Duration.Ticks / $_.HitCount) }
-        $_.AverageCall = if ($_.HitCount -eq 0) { [TimeSpan]::Zero } else { [TimeSpan]::FromTicks($_.CallDuration.Ticks / $_.HitCount) }
         $_.Percent = [Math]::Round($_.Duration.Ticks / $total.Ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
         $_
     }
@@ -177,32 +189,32 @@ function Trace-Script {
     Sort-Object -Property Percent -Descending | 
     Select-Object -First 50
 
-    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest average duration."
+    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest average Duration."
 
     $top50Average = $all | 
     Where-Object Average -gt 0 | 
     Sort-Object -Property Average -Descending | 
     Select-Object -First 50
         
-    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest duration."
+    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest Duration."
 
     $top50Duration = $all |
     Where-Object Duration -gt 0 | 
     Sort-Object -Property Duration -Descending | 
     Select-Object -First 50
 
-    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest average duration for the whole line."
+    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest average SelfDuration."
 
-    $top50Average = $all | 
-    Where-Object AverageCall -gt 0 | 
-    Sort-Object -Property AverageCall -Descending | 
+    $top50SelfAverage = $all | 
+    Where-Object SelfAverage -gt 0 | 
+    Sort-Object -Property SelfAverage -Descending | 
     Select-Object -First 50
         
-    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest duration for the whole line.."
+    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest SelfDuration."
 
-    $top50Duration = $all |
-    Where-Object CallDuration -gt 0 | 
-    Sort-Object -Property CallDuration -Descending | 
+    $top50SelfDuration = $all |
+    Where-Object SelfDuration -gt 0 | 
+    Sort-Object -Property SelfDuration -Descending | 
     Select-Object -First 50
     
     Write-Host -ForegroundColor Magenta "Getting Top50 with the most hits."
@@ -213,16 +225,16 @@ function Trace-Script {
     Select-Object -First 50
 
     $script:processedTrace = [PSCustomObject] @{ 
-        Top50         = $top50Percent
-        Top50Average  = $top50Average
-        Top50Duration = $top50Duration
-        Top50HitCount = $top50HitCount
-        Top50CallDuration = $top50CallDuration
-        Top50CallDurationAverage = $top50CallDurationAverage
-        TotalDuration = $total
-        All           = $all
-        Events        = $trace
-        Files         = foreach ($pair in $fileMap.GetEnumerator()) {
+        Top50             = $top50Percent
+        Top50Average      = $top50Average
+        Top50Duration     = $top50Duration
+        Top50HitCount     = $top50HitCount
+        Top50SelfDuration = $top50SelfDuration
+        Top50SelfAverage  = $top50SelfAverage
+        TotalDuration     = $total
+        AllLines          = $allLines
+        Events            = $trace
+        Files             = foreach ($pair in $fileMap.GetEnumerator()) {
             [PSCustomObject]@{
                 Path    = $pair.Key
                 Profile = $pair.Value
@@ -281,7 +293,7 @@ function Trace-Script {
         Write-Host -ForegroundColor Yellow $total
     }
     
-    Write-Host -ForegroundColor Magenta "Done. Try $(if ($variable) { "$($variable)" } else { '$yourVariable' }).Top50 | Format-Table to get the report. There are also Top50Average, Top50Duration, Top50HitCount, and Files."
+    Write-Host -ForegroundColor Magenta "Done. Try $(if ($variable) { "$($variable)" } else { '$yourVariable' }).Top50 | Format-Table to get the report. There are also Top50Duration, Top50Average, Top50SelfDuration, Top50SelfAverage, Top50HitCount, All, Events and Files."
 }
 
 function Get-LatestTrace { 
@@ -343,29 +355,29 @@ function Show-ScriptExecution {
         if (0 -lt $x) {
             # this is fun, but hardly accurate, as the resolution is <15ms
             # and many lines take <0.001ms
-            [System.Threading.Thread]::Sleep($e.Duration * $x)
+            [System.Threading.Thread]::Sleep($e.SelfDuration * $x)
         }
 
 
         if ($c) {
     
-                $r++
+            $r++
 
-                if (254 -eq $r) {
-                    $r = 0                     
-                    $g++
+            if (254 -eq $r) {
+                $r = 0                     
+                $g++
 
-                    if (254 -eq $g) { 
+                if (254 -eq $g) { 
+                    $g = 0
+                    $b++ 
+
+                    if (254 -eq $b) { 
+                        $r = 0
                         $g = 0
-                        $b++ 
-
-                        if (254 -eq $b) { 
-                            $r = 0
-                            $g = 0
-                            $b = 0
-                        }
+                        $b = 0
                     }
                 }
+            }
           
             "$r $g $b"
         }

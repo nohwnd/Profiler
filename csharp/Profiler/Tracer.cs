@@ -34,7 +34,7 @@ namespace Profiler
 
             if (!patch)
             {
-                SetDurationAndAddToHits(ref _previousHit, Stopwatch.GetTimestamp());
+                SetSelfDurationAndAddToHits(ref _previousHit, Stopwatch.GetTimestamp());
             }
 
             Harmony harmony = new Harmony("fix.debugger");
@@ -116,12 +116,12 @@ namespace Profiler
             // we are using structs so we need to insert the final struct to the 
             // list instead of inserting it to the list, and keeping reference to modify it later
             // so when we are on second event (index 1) we modify the first (index 0) with the correct
-            // duration (start of index 0 until start of index 1 = duration of index 0) and then add it to 
+            // SelfDuration (start of index 0 until start of index 1 = SelfDuration of index 0) and then add it to 
             // the final list
             // We need to do the same when unpatching to get the last event
             if (_index > 0)
             {
-                SetDurationAndAddToHits(ref _previousHit, timestamp);
+                SetSelfDurationAndAddToHits(ref _previousHit, timestamp);
             }
 
 
@@ -145,9 +145,9 @@ namespace Profiler
             _index++;
         }
 
-        private static void SetDurationAndAddToHits(ref ProfileEventRecord eventRecord, long timestamp)
+        private static void SetSelfDurationAndAddToHits(ref ProfileEventRecord eventRecord, long timestamp)
         {
-            eventRecord.Duration = TimeSpan.FromTicks(timestamp - eventRecord.Timestamp);
+            eventRecord.SelfDuration = TimeSpan.FromTicks(timestamp - eventRecord.Timestamp);
             Tracer.Hits.Add(eventRecord);
         }
     }

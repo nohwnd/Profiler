@@ -17,4 +17,6 @@ else {
     $Values | foreach {
         $newValues += $_ + 10
     }
+    
+    Start-Sleep -Milliseconds 10;  Start-Sleep -Milliseconds 10; Start-Sleep -Milliseconds 10;  Start-Sleep -Milliseconds 10;Start-Sleep -Milliseconds 10;  Start-Sleep -Milliseconds 10; Start-Sleep -Milliseconds 10;  Start-Sleep -Milliseconds 10; Start-Sleep -Milliseconds 10;  Start-Sleep -Milliseconds 10; Start-Sleep -Milliseconds 10;  Start-Sleep -Milliseconds 10;Start-Sleep -Milliseconds 10;  Start-Sleep -Milliseconds 10; Start-Sleep -Milliseconds 10;  Start-Sleep -Milliseconds 10;
 }

@@ -14,10 +14,10 @@ namespace Profiler
         public TimeSpan StartTime;
 
         /// <summary>
-        /// Duration of event.
+        /// SelfDuration of event.
         /// </summary>
+        public TimeSpan SelfDuration;
         public TimeSpan Duration;
-        public TimeSpan CallDuration;
 
         /// <summary>
         /// Script text.
@@ -64,8 +64,8 @@ namespace Profiler
 
     public enum CallReturnProcess
     {
-        Process = 0,
-        Call,
+        Call = 0,
         Return,
+        Process
     }
 }

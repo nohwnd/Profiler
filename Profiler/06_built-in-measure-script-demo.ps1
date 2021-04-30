@@ -51,7 +51,7 @@ $trace = $(foreach ($t in $traceCore) {
     $e.EndOffset = $t.Extent.EndOffset
     $r.Extent = $e
     $r.StartTime = $t.StartTime
-    $r.Duration = $t.Duration
+    $r.SelfDuration = $t.SelfDuration
     $r.Index = $index
 
     $r
@@ -72,18 +72,18 @@ Write-Host -ForegroundColor Blue "Get-Profile is done."
 
 # but how do we know what is slow? Well it's simple: 
 $profiles.Top10 |
-    Format-Table -Property Percent, HitCount, Duration, Average, Name, Line, Text
+    Format-Table -Property Percent, HitCount, SelfDuration, Average, Name, Line, Text
 # exit
 break 
 
 
 $profiles.Files | Select-Object -Property Path
 # hello.ps1
-$profiles.Files[2].Profile | Format-Table -Property Line, Duration, HitCount, Text
+$profiles.Files[2].Profile | Format-Table -Property Line, SelfDuration, HitCount, Text
 
 
 break 
 
 # but how do we know what is slow? Well it's simple: 
 $profiles.Top10 |
-    Format-Table -Property Percent, HitCount, Duration, Average, Line, Text, CommandHits
+    Format-Table -Property Percent, HitCount, SelfDuration, Average, Line, Text, CommandHits
