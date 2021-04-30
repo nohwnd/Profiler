@@ -7,7 +7,7 @@ function Trace-Script {
         [string[]] $FilterPath,
         [uint32] $Preheat = 0,
         [Switch] $DisableWarning,
-        [Hashtable] $Feature,
+        [Hashtable] $Flag,
         [Switch] $Before,
         [Switch] $After,
         [Switch] $UseNativePowerShell7Profiler
@@ -23,7 +23,7 @@ function Trace-Script {
 
     $invokedAs = $MyInvocation.Line
 
-    $trace = Trace-ScriptInternal -ScriptBlock $ScriptBlock -Preheat $Preheat -DisableWarning:$DisableWarning -Feature $Feature -UseNativePowerShell7Profiler:$UseNativePowerShell7Profiler -Before:$Before
+    $trace = Trace-ScriptInternal -ScriptBlock $ScriptBlock -Preheat $Preheat -DisableWarning:$DisableWarning -Flag $Flag -UseNativePowerShell7Profiler:$UseNativePowerShell7Profiler -Before:$Before
 
     $traceCount = $trace.Count
     Write-Host -ForegroundColor Magenta "Processing $($traceCount) trace events. $(if (1000000 -lt $traceCount) { " This might take a while..."})"

@@ -21,11 +21,11 @@ function Invoke-Script {
     Run the provided script or command this many times without tracing it to warm up the session.
     This is good for measuring normal performance excluding startup. Default is 0.
 
-    .PARAMETER Feature
+    .PARAMETER Flag
     A hash table of feature flags to be enabled to do before/after comparisons. The script or command will run
     twice in each repetition. Once as before changes and once as after changes. 
 
-    Each key from the hashtable will be defined as a $ variable. Use that variable in `if` to wrap
+    Each key from the hashtable will be defined as a $global: variable. Use that variable in `if` to wrap
     the new code to test it against the old code. 
 
     Use $true, $false as the values. The hashtable represents the after side. Each key will be 
@@ -33,7 +33,7 @@ function Invoke-Script {
 
     In this case example is worth 1000 words:
 
-    Invoke-Script -ScriptBlock { & MyScript.ps1 } -Feature @{ _profiler = $true }
+    Invoke-Script -ScriptBlock { & MyScript.ps1 } -Flag @{ _profiler = $true }
 
     Original code in MyScript.ps1 you are trying to improve:
     $values = 1..1000
@@ -42,14 +42,14 @@ function Invoke-Script {
     }
 
     Modified code with changes that you think are faster wrapped in if using the feature flags: 
-    if ($profiler) {
+    if ($_profiler) {
         $values =  [System.Linq.Enumerable]::Range(1,1000)
     }
     else {
         $values = 1..1000 
     }
 
-    if ($profiler) {
+    if ($_profiler) {
         # after side
         $newValues = foreach ($v in $Values) { $v + 10 }
     }
@@ -63,16 +63,16 @@ function Invoke-Script {
     The a single feature flag might be good enough for many purposes, but imagine there are multiple improvements 
     that migh contradict each other, in that case you are better of adding different flag for each one: 
 
-    Invoke-Script -ScriptBlock { & MyScript.ps1 } -Feature @{ _iteration = $true; _enumerable = $true }
+    Invoke-Script -ScriptBlock { & MyScript.ps1 } -Flag @{ _iteration = $true; _enumerable = $true }
 
-    if ($enumerable) {
+    if ($_enumerable) {
         $values =  [System.Linq.Enumerable]::Range(1,1000)
     }
     else {
         $values = 1..1000 
     }
 
-    if ($iteration) {
+    if ($_iteration) {
         # B side
         $newValues = foreach ($v in $Values) { $v + 10 }
     }
@@ -85,7 +85,7 @@ function Invoke-Script {
 
     Using two or more feature flags you can test them together as shown above, or one without the other: 
 
-    Invoke-Script -ScriptBlock { & MyScript.ps1 } -Feature @{ _iteration = $true; _enumerable = $false }
+    Invoke-Script -ScriptBlock { & MyScript.ps1 } -Flag @{ _iteration = $true; _enumerable = $false }
     #>
 
     param(
@@ -93,7 +93,7 @@ function Invoke-Script {
         [ScriptBlock] $ScriptBlock,
         [uint32] $Repeat = 1,
         [uint32] $Preheat = 0,
-        [Hashtable] $Feature
+        [Hashtable] $Flag
     )
 
     $ErrorView = "Normal"
@@ -102,9 +102,9 @@ function Invoke-Script {
     Assert-PowerShellVersion
 
     Write-Host -ForegroundColor Magenta "Running in PowerShell $($PSVersionTable.PSVersion)."
-    if ($Feature) {
-        Write-Host -ForegroundColor Magenta "Features for After runs:"
-        foreach ($f in $Feature.GetEnumerator()) {
+    if ($Flag) {
+        Write-Host -ForegroundColor Magenta "Flags for After runs:"
+        foreach ($f in $Flag.GetEnumerator()) {
             Write-Host -ForegroundColor Magenta "    $($f.Key) = $($f.Value)"
         }
     }
@@ -120,8 +120,8 @@ function Invoke-Script {
     if (0 -lt $Preheat) { 
         foreach ($i in 1..$Preheat) {
             Write-Host -Foreground Magenta  "Warm up $i"
-            if (0 -lt $Feature.Count) { 
-                foreach ($p in $Feature.GetEnumerator()) {
+            if (0 -lt $Flag.Count) { 
+                foreach ($p in $Flag.GetEnumerator()) {
                     $v = if ($i % 2 -eq 1) { 
                         $false
                     } 
@@ -147,12 +147,12 @@ function Invoke-Script {
     $run = [Collections.Generic.List[object]]@()
 
     foreach ($i in 1..$Repeat) {
-        $sides = if ($null -ne $Feature) { "Before", "After" } else { "After" }        
+        $sides = if ($null -ne $Flag) { "Before", "After" } else { "After" }        
         
         foreach ($side in $sides) {
             Write-Host -Foreground Magenta  "Run $i$(if (1 -lt $sides.Count) { " - $side" })"
-            if (0 -lt $Feature.Count) { 
-                foreach ($p in $Feature.GetEnumerator()) {
+            if (0 -lt $Flag.Count) { 
+                foreach ($p in $Flag.GetEnumerator()) {
                     $v = if ("Before" -eq $side) { 
                         $false
                     } 
@@ -182,7 +182,7 @@ function Invoke-Script {
 
     Write-Host -Foreground Magenta  "Done."
 
-    if ($Feature) { 
+    if ($Flag) { 
         for ($r = 0; $r -lt $run.Count; $r = $r + 2) { 
             $b = $run[$r]
             $a = $run[$r + 1]

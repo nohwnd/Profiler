@@ -5,7 +5,7 @@ function Trace-ScriptInternal {
         [ScriptBlock] $ScriptBlock,
         [uint32] $Preheat = 0,
         [Switch] $DisableWarning,
-        [Hashtable] $Feature,
+        [Hashtable] $Flag,
         [Switch] $Before,
         [Switch] $UseNativePowerShell7Profiler
     )
@@ -25,9 +25,9 @@ function Trace-ScriptInternal {
         Write-Warning "Using the tracer on PowerShell 7 does not work fully on the first run. You will get only partial results for your first run. Use -Preheat 1 to warm up the environment for the first run. On subsequent runs in the same session you might not need to use it if you did not change much code. You can use -DisableWarning to disable this warning."
     }
 
-    if ($Feature) { 
-        Write-Host -ForegroundColor Magenta "Features for $(if (-not $Before) { "After" } else { "Before"}) run:"
-        foreach ($p in $Feature.GetEnumerator()) {
+    if ($Flag) { 
+        Write-Host -ForegroundColor Magenta "Flags for $(if (-not $Before) { "After" } else { "Before"}) run:"
+        foreach ($p in $Flag.GetEnumerator()) {
             $v = if ($Before) { $false } else { $p.Value }
             Write-Host -ForegroundColor Magenta "    $($p.Key) = $($v)"
             Set-Variable -Scope Global -Name $p.Key -Value $v
@@ -74,8 +74,8 @@ function Trace-ScriptInternal {
         }
     }
 
-    if (0 -lt $Feature.Count) { 
-        foreach ($p in $Feature.GetEnumerator()) {
+    if (0 -lt $Flag.Count) { 
+        foreach ($p in $Flag.GetEnumerator()) {
             $v = if ($Before) { $false } else { $p.Value }
             Set-Variable -Scope Global -Name $p.Key -Value $v
         }
