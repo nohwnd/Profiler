@@ -1,14 +1,14 @@
 function Invoke-Script {
     <# 
     .DESCRIPTION
-    Invoke the provided script or command in a new PowerShell process, and trace the execution.
+    Invoke the provided script or command and measure the time it takes to execute it.
 
     .PARAMETER ScriptBlock
-    A command to be profiled.
+    A ScriptBlock to be executed.
 
     $trace = Invoke-Script -ScriptBlock { Import-Module $PSScriptRoot\Planets.psm1; Get-Planet } -Repeat 3
 
-    When running a script file use this syntax, you can specify parameters if you need: 
+    When running a script file use the same syntax, you can specify parameters if you need: 
     $trace = Invoke-Script -ScriptBlock { & $PSScriptRoot\MyScript.ps1 } -Repeat 3
 
     .PARAMETER Repeat
@@ -24,6 +24,8 @@ function Invoke-Script {
     .PARAMETER Flag
     A hash table of feature flags to be enabled to do before/after comparisons. The script or command will run
     twice in each repetition. Once as before changes and once as after changes. 
+
+    For this to work your code needs to cooperate:
 
     Each key from the hashtable will be defined as a $global: variable. Use that variable in `if` to wrap
     the new code to test it against the old code. 
@@ -60,7 +62,7 @@ function Invoke-Script {
         }
     }
 
-    The a single feature flag might be good enough for many purposes, but imagine there are multiple improvements 
+    A single feature flag might be good enough for many purposes, but imagine there are multiple improvements 
     that migh contradict each other, in that case you are better of adding different flag for each one: 
 
     Invoke-Script -ScriptBlock { & MyScript.ps1 } -Flag @{ _iteration = $true; _enumerable = $true }
