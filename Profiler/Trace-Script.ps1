@@ -1,5 +1,121 @@
 $script:totals = [System.Collections.Queue]::new()
 function Trace-Script {
+    <# 
+    .DESCRIPTION
+    Invoke the provided script or command and profile its execution.
+
+    .PARAMETER ScriptBlock
+    A ScriptBlock to be profiled.
+
+    $trace = Trace-Script -ScriptBlock { Import-Module $PSScriptRoot\Planets.psm1; Get-Planet } -Preheat 1
+
+    When running a script file use the same syntax, you can specify parameters if you need: 
+    $trace = Invoke-Script -ScriptBlock { & $PSScriptRoot\MyScript.ps1 } -Preheat 1
+
+    -Preheat 1 is recommended on PowerShell 7 because the profiler does not work fully on the first run.
+    See below.
+
+    .PARAMETER Preheat
+    Run the provided script or command this many times without tracing it to warm up the session.
+    This is good for measuring normal performance excluding startup. Default is 0.
+
+    -Preheat 1 is recommended on PowerShell 7 because the profiler does not work fully on the first run.
+
+    This is unfortunate for testing code that imports modules. Modules import much faster on second run
+    when they are still in scope. In such cases, it is recommended to add code at the end of the scriptblock 
+    that will remove modules and forces them to import again. But don't remove Profiler. This will still miss
+    assembly loading and similar static stuff, but it is better than nothing.
+
+    $trace = Trace-Script -ScriptBlock {
+        & $Profile
+
+        Get-Module | Where-Object Name -NE Profiler | Remove-Module
+    } -Preheat 1
+
+    This is a current limitation that will be removed if come up with a better hack to hook the profiler.
+    Or when the native profiler is released. 
+
+    The current profiler also cannot profile code running in other runspaces.
+
+    .PARAMETER DisableWarning
+    Disable warning about Preheat on PowerShell 7.
+
+    .PARAMETER Flag
+    A hash table of feature flags to be set to profile code before or after changes. The default is After
+    changes. You can toggle the behavior using -Before and also -After (which is the same as using neither).
+
+    For this to work your code needs to cooperate:
+
+    Each key from the hashtable will be defined as a $global: variable. Use that variable in `if` to wrap
+    the new code to test it against the old code. 
+
+    Use $true, $false as the values. The hashtable represents the after side. Each key will be 
+    defined with the value for after side. Each key will be defined with $false for the before side.
+
+    In this case example is worth 1000 words:
+
+    Trace-Script -ScriptBlock { & MyScript.ps1 } -Flag @{ _profiler = $true }
+
+    Original code in MyScript.ps1 you are trying to improve:
+    $values = 1..1000
+    foreach ($v in $Values) {
+        $newValues += $v + 10
+    }
+
+    Modified code with changes that you think are faster wrapped in if using the feature flags: 
+    if ($_profiler) {
+        $values =  [System.Linq.Enumerable]::Range(1,1000)
+    }
+    else {
+        $values = 1..1000 
+    }
+
+    if ($_profiler) {
+        # after side
+        $newValues = foreach ($v in $Values) { $v + 10 }
+    }
+    else {
+        # before side
+        foreach ($v in $Values) {
+            $newValues += $v + 10
+        }
+    }
+
+    A single feature flag might be good enough for many purposes, but imagine there are multiple improvements 
+    that migh contradict each other, in that case you are better of adding different flag for each one: 
+
+    Trace-Script -ScriptBlock { & MyScript.ps1 } -Flag @{ _iteration = $true; _enumerable = $true }
+
+    if ($_enumerable) {
+        $values =  [System.Linq.Enumerable]::Range(1,1000)
+    }
+    else {
+        $values = 1..1000 
+    }
+
+    if ($_iteration) {
+        # B side
+        $newValues = foreach ($v in $Values) { $v + 10 }
+    }
+    else {
+        # A side
+        foreach ($v in $Values) {
+            $newValues += $v + 10
+        }
+    }
+
+    Using two or more feature flags you can test them together as shown above, or one without the other: 
+
+    Trace-Script -ScriptBlock { & MyScript.ps1 } -Flag @{ _iteration = $true; _enumerable = $false }
+
+    .PARAMETER Before
+    When using -Flag. Force all flags to be set as $false to run the code before changes.
+
+    .PARAMETER After
+    When using -Flag. Force all flags to be set to the values provided in the -Flag hashtable.
+    When both -Before and -After are enabled, -After is used.
+    #>
+
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -9,12 +125,12 @@ function Trace-Script {
         [Switch] $DisableWarning,
         [Hashtable] $Flag,
         [Switch] $Before,
-        [Switch] $After,
-        [Switch] $UseNativePowerShell7Profiler
+        [Switch] $After
+        # [Switch] $UseNativePowerShell7Profiler
     )
 
     if ($Before -and $After) { 
-        Write-Warning "You cannot use -Before and -After together, using -After."
+        Write-Warning "You should not use -Before and -After together, using -After."
     }
 
     if ($After) { 

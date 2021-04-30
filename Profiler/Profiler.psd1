@@ -8,7 +8,7 @@
 RootModule = 'Profiler.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.0'
+ModuleVersion = '2.0.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -20,7 +20,7 @@ GUID = '9158008f-9aa9-48b3-80f7-a87f26876a8d'
 Author = 'nohwnd'
 
 # Company or vendor of this module
-CompanyName = 'None'
+CompanyName = 'nohwnd'
 
 # Copyright statement for this module
 Copyright = '(c) nohwnd. All rights reserved.'
