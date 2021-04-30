@@ -45,10 +45,10 @@ Invoke-Script -ScriptBlock $scriptBlock -Preheat 0 -Repeat 3 -Flag $flag
 
 ```powershell
 # to see the whole file 
-$trace.Files[1].Profile | Format-Table
+$trace.Files[0].Profile | Format-Table
 
 # or to get first 10 lines 
-$trace.Files[1].Profile[0..9] | Format-Table
+$trace.Files[0].Profile[0..9] | Format-Table
 ```
 
 ![](images/Profile.jpg)
