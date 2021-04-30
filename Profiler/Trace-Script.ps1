@@ -32,7 +32,11 @@ function Trace-Script {
     }
     else {
         $unique = [Collections.Generic.HashSet[string]]::new()
-        $null = foreach ($f in $Trace) { $unique.Add($f.Path) }
+        # skip first event and the last because they come from the measure script
+        # they are the lines where we enable and disable tracing. # don't remove them
+        # from the trace just yet. We need the timestamp to calculate correct time
+        # for the last real event
+        $null = foreach ($f in $Trace[1..($Trace.Length - 2)]) { $unique.Add($f.Path) }
         $files = foreach ($v in $unique.GetEnumerator()) { $v }
     }
 
@@ -80,10 +84,13 @@ function Trace-Script {
 
     Write-Host -ForegroundColor Magenta "Calculating Duration per line."
     $stack = [System.Collections.Generic.Stack[int]]::new()
+
+    $caller = $null
     foreach ($event in $trace) {
         # there is next event in the trace, 
         # we can use it to see if we remained in the 
         # function or returned
+
         if ($event.Index -lt $traceCount - 2) {
             $nextEvent = $trace[$event.Index + 1]
             # the next event has higher number on the callstack
@@ -92,6 +99,8 @@ function Trace-Script {
                 $event.Flow = [Profiler.CallReturnProcess]::Call
                 # save where we entered 
                 $stack.Push($event.Index)
+                $event.CallerIndex = $caller
+                $caller = $event.Index
             }
             elseif ($nextEvent.Level -lt $event.Level) {
                 $event.Flow = [Profiler.CallReturnProcess]::Return
@@ -118,6 +127,8 @@ function Trace-Script {
                 # so the duration and self duration are the same
                 $event.Duration = $event.SelfDuration
                 $event.ReturnIndex = $event.Index
+                # who called us
+                $event.CallerIndex = $caller
             }
             else { 
                 # we stay in the function in the next step, so we did 
@@ -126,8 +137,11 @@ function Trace-Script {
                 $event.Flow = [Profiler.CallReturnProcess]::Process
                 $event.Duration = $event.SelfDuration
                 $event.ReturnIndex = $event.Index
+
+                # who called us
+                $event.CallerIndex = $caller
             }
-        
+
             # those are structs and we can't grab it by ref from the list
             # so we just overwrite
             $trace[$event.Index] = $event
@@ -150,7 +164,7 @@ function Trace-Script {
         $lineProfile.Hits.Add($hit)
 
         # add distinct entries per column when there are more commands
-        # on the same line (like we did it with the Group-Object on foreach ($i in 1...1000))
+        # on the same line so we can see which commands contributed to the line duration
         if ($lineProfile.CommandHits.ContainsKey($hit.Column)) { 
             $commandHit = $lineProfile.CommandHits[$hit.Column] 
             $commandHit.SelfDuration += $hit.SelfDuration
@@ -170,7 +184,9 @@ function Trace-Script {
         }
     }
 
-    $total = if ($null -ne $trace -and 0 -lt @($trace).Count) { [TimeSpan]::FromTicks($trace[-1].Timestamp - $trace[0].Timestamp) } else { [TimeSpan]::Zero }
+    # trace starts with event from the measurement script where we enable tracing and ends with event where we disable it
+    # events are timestamped at the start so user code duration is from the second event (index 1), till the last event (index -1) where we disable tracing
+    $total = if ($null -ne $trace -and 0 -lt @($trace).Count) { [TimeSpan]::FromTicks($trace[-1].Timestamp - $trace[1].Timestamp) } else { [TimeSpan]::Zero }
 
     Write-Host -ForegroundColor Magenta "Counting averages and percentages."
     # this is like SelectMany, it joins the arrays of arrays
@@ -381,5 +397,25 @@ function Show-ScriptExecution {
           
             "$r $g $b"
         }
+    }
+}
+
+# don't publish just yet till I get some time using this
+function Get-CallStack {
+
+    param (
+        [Parameter(Mandatory)]
+        [Profiler.ProfileEventRecord] $Event
+    )
+
+    $trace = (Get-LatestTrace).Events
+
+    $Event
+
+    if (0 -ne $Event.CallerIndex) {
+        do {
+            $Event = $trace[$Event.CallerIndex]
+            $Event
+        } while (1 -lt $Event.CallerIndex)
     }
 }

@@ -59,7 +59,10 @@ namespace Profiler
 
         public CallReturnProcess Flow;
 
+        // where we returned if we are a call, otherwise our own index
         public int ReturnIndex;
+        // who called us
+        public int CallerIndex;
     }
 
     public enum CallReturnProcess

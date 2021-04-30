@@ -10,4 +10,3 @@ $trace.Top50 | Format-Table
 
 # Try it for yourself by running the commands from this demo, or by invoking this file as
 # . ./demo.ps1
-

@@ -99,7 +99,7 @@ function Trace-ScriptInternal {
     }
 
     $trace = $result.Trace
-    $normalizedTrace = [Collections.Generic.List[object]]::new()
+    $normalizedTrace = [Collections.Generic.List[Profiler.ProfileEventRecord]]::new($trace.Count)
     Write-Host -Foreground Magenta "Tracing done. Got $($trace.Count) trace events."
     if ($UseNativePowerShell7Profiler) {
         Write-Host "Used native tracer from PowerShell 7. Normalizing trace."
