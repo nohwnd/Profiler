@@ -1,5 +1,5 @@
 # for BP to attach
-Import-Module "$PSScriptRoot/bin/net452/Profiler.dll"
+Import-Module "$PSScriptRoot/bin/net452/Profiler.dll" -ErrorAction Stop
 
 # last 10 runs, show times to see how it went
 
@@ -9,4 +9,4 @@ Import-Module "$PSScriptRoot/bin/net452/Profiler.dll"
 . "$PSScriptRoot/Trace-Script.ps1"
 
 
-Export-ModuleMember -Function 'Invoke-Script', 'Trace-Script', 'Get-LatestTrace'
+Export-ModuleMember -Function 'Invoke-Script', 'Trace-Script', 'Get-LatestTrace', 'Show-ScriptExecution'

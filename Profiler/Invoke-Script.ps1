@@ -176,7 +176,7 @@ function Invoke-Script {
                 Write-Host "Run $i$(if (1 -lt $sides.Count) { " - $side" }) failed after $($sw.Elapsed) with $_."
             }
 
-            $null = $run.Add(@{ Error = $err; Duration = $sw.Elapsed; Side = $side })
+            $null = $run.Add(@{ Error = $err; SelfDuration = $sw.Elapsed; Side = $side })
         }
     }
 
@@ -187,7 +187,7 @@ function Invoke-Script {
             $b = $run[$r]
             $a = $run[$r + 1]
 
-            $diff = [int]($a.Duration.TotalMilliseconds - $b.Duration.TotalMilliseconds)
+            $diff = [int]($a.SelfDuration.TotalMilliseconds - $b.SelfDuration.TotalMilliseconds)
             if ($diff -eq 0) { 
                 $beforeColor = $afterColor = "Yellow"
             }
@@ -201,9 +201,9 @@ function Invoke-Script {
             }
 
             Write-Host -NoNewline "Run $(${r}/2): "
-            Write-Host -ForegroundColor $beforeColor $b.Duration -NoNewline 
+            Write-Host -ForegroundColor $beforeColor $b.SelfDuration -NoNewline 
             Write-Host -NoNewline " -> "
-            Write-Host -ForegroundColor $afterColor $a.Duration -NoNewline 
+            Write-Host -ForegroundColor $afterColor $a.SelfDuration -NoNewline 
             Write-Host " ($($diff) ms)"
         }
     }

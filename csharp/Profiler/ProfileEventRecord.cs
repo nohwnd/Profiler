@@ -14,8 +14,9 @@ namespace Profiler
         public TimeSpan StartTime;
 
         /// <summary>
-        /// Duration of event.
+        /// SelfDuration of event.
         /// </summary>
+        public TimeSpan SelfDuration;
         public TimeSpan Duration;
 
         /// <summary>
@@ -54,5 +55,20 @@ namespace Profiler
         public string Text => Extent.Text;
         public long Timestamp => StartTime.Ticks;
 
+        public int Level;
+
+        public CallReturnProcess Flow;
+
+        // where we returned if we are a call, otherwise our own index
+        public int ReturnIndex;
+        // who called us
+        public int CallerIndex;
+    }
+
+    public enum CallReturnProcess
+    {
+        Call = 0,
+        Return,
+        Process
     }
 }
