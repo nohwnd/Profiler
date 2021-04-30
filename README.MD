@@ -35,8 +35,8 @@ Trace-Script -ScriptBlock $scriptBlock -Preheat 1
 - Run code multiple times, comparing performance before and after your changes. 
 
 ```powershell
-$feature = @{ _profiler = $true }
-Invoke-Script -ScriptBlock $scriptBlock -Preheat 0 -Repeat 3 -Feature $feature
+$flag = @{ _profiler = $true }
+Invoke-Script -ScriptBlock $scriptBlock -Preheat 0 -Repeat 3 -Flag $flag
 ```
 
 ![](images/Compare.jpg)
@@ -56,7 +56,7 @@ $trace.Files[1].Profile[0..9] | Format-Table
 - Retrieve the last profile when you did not assign it to a variable 
 
 ```powershell 
-Invoke-Script -ScriptBlock $scriptBlock -Preheat 0 -Repeat 3 -Feature $feature
+Invoke-Script -ScriptBlock $scriptBlock -Preheat 0 -Repeat 3 -Flag $flag
 
 # Output:
 # Looks like you did not assign the output to a variable. Use Get-LatestTrace to retrieve the trace, e.g.: $trace = Get-LatestTrace
