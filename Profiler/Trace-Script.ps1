@@ -202,30 +202,30 @@ function Trace-Script {
     $stack = [System.Collections.Generic.Stack[int]]::new()
 
     $caller = $null
-    foreach ($event in $trace) {
+    foreach ($hit in $trace) {
         # there is next event in the trace, 
         # we can use it to see if we remained in the 
         # function or returned
 
-        if ($event.Index -lt $traceCount - 2) {
-            $nextEvent = $trace[$event.Index + 1]
+        if ($hit.Index -lt $traceCount - 2) {
+            $nextEvent = $trace[$hit.Index + 1]
             # the next event has higher number on the callstack
             # we are going down into a function, meaning this is a call
-            if ($nextEvent.Level -gt $event.Level) {
-                $event.Flow = [Profiler.CallReturnProcess]::Call
+            if ($nextEvent.Level -gt $hit.Level) {
+                $hit.Flow = [Profiler.CallReturnProcess]::Call
                 # save where we entered 
-                $stack.Push($event.Index)
-                $event.CallerIndex = $caller
-                $caller = $event.Index
+                $stack.Push($hit.Index)
+                $hit.CallerIndex = $caller
+                $caller = $hit.Index
             }
-            elseif ($nextEvent.Level -lt $event.Level) {
-                $event.Flow = [Profiler.CallReturnProcess]::Return
+            elseif ($nextEvent.Level -lt $hit.Level) {
+                $hit.Flow = [Profiler.CallReturnProcess]::Return
                 # we go up, back from a function and we might jump up
                 # for example when throw happens and we end up in try catch
                 # that is x levels up
                 # get all the calls that happened up until this level
                 # and diff them against this to set their durations
-                while ($stack.Count -ge $event.Level) {
+                while ($stack.Count -ge $hit.Level) {
                     $callIndex = $stack.Pop()
                     $call = $trace[$callIndex]
                     # events are timestamped at the start, so start of when we called until 
@@ -233,7 +233,7 @@ function Trace-Script {
                     $call.Duration = [TimeSpan]::FromTicks($nextEvent.Timestamp - $call.Timestamp)
                     # save into the call where it returned so we can see the events in the
                     # meantime and see what was actually slow
-                    $call.ReturnIndex = $event.Index
+                    $call.ReturnIndex = $hit.Index
                     # those are structs and we can't grab it by ref from the list
                     # so we just overwrite
                     $trace[$callIndex] = $call
@@ -241,26 +241,26 @@ function Trace-Script {
 
                 # return from a function is not calling anything 
                 # so the duration and self duration are the same
-                $event.Duration = $event.SelfDuration
-                $event.ReturnIndex = $event.Index
+                $hit.Duration = $hit.SelfDuration
+                $hit.ReturnIndex = $hit.Index
                 # who called us
-                $event.CallerIndex = $caller
+                $hit.CallerIndex = $caller
             }
             else { 
                 # we stay in the function in the next step, so we did 
                 # not call anyone or did not return, we are just processing
                 # the duration is the selfduration
-                $event.Flow = [Profiler.CallReturnProcess]::Process
-                $event.Duration = $event.SelfDuration
-                $event.ReturnIndex = $event.Index
+                $hit.Flow = [Profiler.CallReturnProcess]::Process
+                $hit.Duration = $hit.SelfDuration
+                $hit.ReturnIndex = $hit.Index
 
                 # who called us
-                $event.CallerIndex = $caller
+                $hit.CallerIndex = $caller
             }
 
             # those are structs and we can't grab it by ref from the list
             # so we just overwrite
-            $trace[$event.Index] = $event
+            $trace[$hit.Index] = $hit
         }
     }
 
@@ -521,17 +521,17 @@ function Get-CallStack {
 
     param (
         [Parameter(Mandatory)]
-        [Profiler.ProfileEventRecord] $Event
+        [Profiler.ProfileEventRecord] $hit
     )
 
     $trace = (Get-LatestTrace).Events
 
-    $Event
+    $hit
 
-    if (0 -ne $Event.CallerIndex) {
+    if (0 -ne $hit.CallerIndex) {
         do {
-            $Event = $trace[$Event.CallerIndex]
-            $Event
-        } while (1 -lt $Event.CallerIndex)
+            $hit = $trace[$hit.CallerIndex]
+            $hit
+        } while (1 -lt $hit.CallerIndex)
     }
 }
