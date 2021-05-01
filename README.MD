@@ -26,7 +26,7 @@ $scriptBlock = {
     Import-Module Pester
     Invoke-Pester
 }
-Trace-Script -ScriptBlock $scriptBlock -Preheat 1
+Trace-Script -ScriptBlock $scriptBlock
 ```
 
 (Excluding files, e.g. Pester internals from the profiling is coming later.)

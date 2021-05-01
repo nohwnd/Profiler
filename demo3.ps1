@@ -17,8 +17,8 @@ c
 ## Duration per-line and per itself, and finding what was slow
 Import-Module $PSScriptRoot/Profiler/Profiler.psm1 -Force
 
-# Runs the script 1 time, with 1 warm up run (this is needed in PowerShell 7)
-$trace = Trace-Script { & "demo-scripts/SleepyScript.ps1" } -Preheat 1
+# Runs the script
+$trace = Trace-Script { & "demo-scripts/SleepyScript.ps1" }
 
 $trace.Top50 | Format-Table
 

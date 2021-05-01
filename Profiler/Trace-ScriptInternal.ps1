@@ -21,10 +21,6 @@ function Trace-ScriptInternal {
         $Preheat = 0
     }
 
-    if (7 -eq $PSVersionTable.PSVersion.Major -and -not $UseNativePowerShell7Profiler -and 0 -eq $Preheat) { 
-        Write-Warning "Using the tracer on PowerShell 7 does not work fully on the first run. You will get only partial results for your first run. Use -Preheat 1 to warm up the environment for the first run. On subsequent runs in the same session you might not need to use it if you did not change much code. You can use -DisableWarning to disable this warning."
-    }
-
     if ($Flag) { 
         Write-Host -ForegroundColor Magenta "Flags for $(if (-not $Before) { "After" } else { "Before"}) run:"
         foreach ($p in $Flag.GetEnumerator()) {
@@ -43,31 +39,9 @@ function Trace-ScriptInternal {
                 $null = Measure-Script $ScriptBlock
             }
             else {
-                $isPS7 = 7 -eq $PSVersionTable.PSVersion.Major
-                if (1 -eq $i -and $isPS7) {
-                    Write-Host -ForegroundColor Magenta "In PowerShell 7 all output is disabled for the first warmup. Just wait..."
-                    $externalUiField = $host.UI.GetType().GetField("_externalUI", [System.Reflection.BindingFlags]"Instance, NonPublic")
-                    $externalUi = $externalUiField.GetValue($host.UI)
-                }
-                try {
-                    # remove the UI to prevent all the debug output to be dumped on the screen
-                    # when we are not able to replace tha calls to TraceLine in pwsh7 with harmony
-                    # because it is noisy and really slow
-                    # might replace with a delegating wrapper to only ignore debug messages later
-                    if (1 -eq $i -and $isPS7) {
-                        $externalUiField.SetValue($host.UI, $null)
-                    }
-
-                    $result = Measure-ScriptHarmony $ScriptBlock
-                    if ($null -ne $result.Error) { 
-                        Write-Host -ForegroundColor Red "Warm up failed with $($result.Error)."
-                    }
-                } 
-                finally { 
-                    if (1 -eq $i -and $isPS7) {
-                        # revert
-                        $externalUiField.SetValue($host.UI, $externalUi)
-                    }
+                $result = Measure-ScriptHarmony $ScriptBlock
+                if ($null -ne $result.Error) { 
+                    Write-Host -ForegroundColor Red "Warm up failed with $($result.Error)."
                 }
             }
             
@@ -136,13 +110,13 @@ function Measure-ScriptHarmony ($ScriptBlock) {
         # ensure all output to pipeline is dumped
         $null = & {
             try {
-                [Profiler.Tracer]::PatchOrUnpatch($ExecutionContext, $true, $false)
+                [Profiler.Tracer]::Patch($ExecutionContext, $host.UI)
                 Set-PSDebug -Trace 1
                 & $ScriptBlock
             } 
             finally {
                 Set-PSDebug -Trace 0
-                [Profiler.Tracer]::PatchOrUnpatch($ExecutionContext, $false, $false)
+                [Profiler.Tracer]::Unpatch()
             }
         }
     }
