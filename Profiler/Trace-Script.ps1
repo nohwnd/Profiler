@@ -142,7 +142,7 @@ function Trace-Script {
     $trace = Trace-ScriptInternal -ScriptBlock $ScriptBlock -Preheat $Preheat -DisableWarning:$DisableWarning -Flag $Flag -UseNativePowerShell7Profiler:$UseNativePowerShell7Profiler -Before:$Before
 
     $traceCount = $trace.Count
-    Write-Host -ForegroundColor Magenta "Processing $($traceCount) trace events. $(if (1000000 -lt $traceCount) { " This might take a while..."})"
+    Write-Host -ForegroundColor Magenta "Processing $($traceCount) trace events. $(if (1000000 -lt $traceCount) { "This might take a while..."})"
     if ($null -ne $FilterPath -and 0 -lt @($FilterPath).Count) {
         $files = $Path | ForEach-Object { (Resolve-Path $_).Path }
     }
@@ -198,7 +198,7 @@ function Trace-Script {
         }
     }
 
-    Write-Host -ForegroundColor Magenta "Calculating Duration per line."
+    Write-Host -ForegroundColor Magenta "Figuring out flow."
     $stack = [System.Collections.Generic.Stack[int]]::new()
 
     $caller = $null
@@ -275,16 +275,21 @@ function Trace-Script {
 
         $lineProfile = $lineProfiles[$hit.Line - 1] # array indexes from 0, but lines from 1
         $lineProfile.SelfDuration += $hit.SelfDuration
-        $lineProfile.Duration += $hit.Duration
+        # $lineProfile.Duration += $hit.Duration
         $lineProfile.HitCount++
         $lineProfile.Hits.Add($hit)
 
         # add distinct entries per column when there are more commands
         # on the same line so we can see which commands contributed to the line duration
+        # if we need to count duration we can do it by moving this to the next part of the code
+        # where we process each hit on the line
         if ($lineProfile.CommandHits.ContainsKey($hit.Column)) { 
             $commandHit = $lineProfile.CommandHits[$hit.Column] 
             $commandHit.SelfDuration += $hit.SelfDuration
-            $commandHit.Duration += $hit.Duration
+            # do not track duration for now, we are not listing each call to the command
+            # so we cannot add the durations correctly, because we need to exclude recursive calls
+            # it is also not very useful I think, might reconsider later
+            # $commandHit.Duration += $hit.Duration
             $commandHit.HitCount++
         }
         else { 
@@ -292,11 +297,38 @@ function Trace-Script {
                 Line         = $hit.Line # start from 1 as in file
                 Column       = $hit.Column
                 SelfDuration = $hit.SelfDuration
-                Duration     = $hit.Duration
+                # Duration     = 0
                 HitCount     = 1
                 Text         = $hit.Text
             }
             $lineProfile.CommandHits.Add($hit.Column, $commandHit)
+        }
+    }
+
+    Write-Host -ForegroundColor Magenta "Figuring out durations per line."
+    foreach ($k in $fileMap.Keys) { 
+        $file = $fileMap[$k]
+        foreach ($line in $file) {
+            # we can have calls that call into the same line
+            # simply adding durations together gives us times
+            # that can be way more than the execution time of the 
+            # whole script because the line is accounted for multiple
+            # times. This is best visible when calling recursive function
+            # each subsequent call would add up to the previous ones
+            # https://twitter.com/nohwnd/status/1388418452130603008?s=20
+            # so we need to check if we are not in the current function
+            # by keeping the highest return index and only adding the time
+            # when we have index that is higher than it, meaning we are 
+            # now running after we returned from the function
+            $returnIndex = 0
+            $duration = [timespan]::Zero
+            foreach ($hit in $line.Hits) {
+                if ($hit.Index -gt $returnIndex) { 
+                    $duration += $hit.Duration
+                    $returnIndex = $hit.ReturnIndex
+                }
+            }
+            $line.Duration = $duration
         }
     }
 

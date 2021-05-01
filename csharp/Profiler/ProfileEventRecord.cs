@@ -48,6 +48,11 @@ namespace Profiler
         public long Index;
         public TimeSpan Overhead;
 
+        // extent file might be empty when we are in unsaves scriptblock
+        // this is set when creating the struct
+        public bool IsInFile;
+
+
         // adapting to unified format
         public string Path => Extent.File;
         public int Line => Extent.StartLineNumber;
