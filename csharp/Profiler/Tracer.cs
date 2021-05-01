@@ -129,11 +129,10 @@ namespace Profiler
             Tracer._previousHit = new ProfileEventRecord();
             Tracer._previousHit.StartTime = TimeSpan.FromTicks(timestamp);
             Tracer._previousHit.Index = _index;
-            var isInFile = !string.IsNullOrWhiteSpace(extent.File);
+            Tracer._previousHit.IsInFile = !string.IsNullOrWhiteSpace(extent.File);
             Tracer._previousHit.Extent = new ScriptExtentEventData
             {
                 File = extent.File,
-                IsInFile = isInFile,
                 StartLineNumber = extent.StartLineNumber,
                 StartColumnNumber = extent.StartColumnNumber,
                 EndLineNumber = extent.EndLineNumber,

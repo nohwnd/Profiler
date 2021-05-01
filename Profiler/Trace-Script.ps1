@@ -120,7 +120,7 @@ function Trace-Script {
     param(
         [Parameter(Mandatory)]
         [ScriptBlock] $ScriptBlock,
-        [string[]] $FilterPath,
+        # [string[]] $FilterPath,
         [uint32] $Preheat = 0,
         [Switch] $DisableWarning,
         [Hashtable] $Flag,
@@ -142,6 +142,7 @@ function Trace-Script {
     $trace = Trace-ScriptInternal -ScriptBlock $ScriptBlock -Preheat $Preheat -DisableWarning:$DisableWarning -Flag $Flag -UseNativePowerShell7Profiler:$UseNativePowerShell7Profiler -Before:$Before
 
     $traceCount = $trace.Count
+
     Write-Host -ForegroundColor Magenta "Processing $($traceCount) trace events. $(if (1000000 -lt $traceCount) { "This might take a while..."})"
     if ($null -ne $FilterPath -and 0 -lt @($FilterPath).Count) {
         $files = $Path | ForEach-Object { (Resolve-Path $_).Path }
@@ -152,7 +153,14 @@ function Trace-Script {
         # they are the lines where we enable and disable tracing. # don't remove them
         # from the trace just yet. We need the timestamp to calculate correct time
         # for the last real event
-        $null = foreach ($f in $Trace[1..($Trace.Length - 2)]) { $unique.Add($f.Path) }
+        foreach ($f in $Trace[1..($Trace.Length - 2)]) { 
+            if (!$f.IsInFile) {
+                $null = $unique.Add('<scriptblock>')
+            }
+            else { 
+                $null = $unique.Add($f.Path)
+            }
+        }
         $files = foreach ($v in $unique.GetEnumerator()) { $v }
     }
 
@@ -161,12 +169,26 @@ function Trace-Script {
     $fileMap = @{}
     foreach ($file in $files) {
         if ($file -and -not $fileMap.ContainsKey($file)) {
-            if (-not (Test-Path $file)) { 
-                Write-Host "$file no longer exists, skipping."
+            $isScriptBlock = $false
+            $isMissing = $false
+            if ("<scriptblock>" -eq $file) {
+                $isScriptBlock = $true
+            } 
+            elseif (-not (Test-Path $file)) { 
+                Write-Host "File $file does not exists on disk. It will be reconstructed from the lines that were invoked and parts of it might be missing."
+                $isMissing = $true
                 continue
             }
-            $name = [IO.Path]::GetFileName($file)
-            $lines = Get-Content $file
+            
+            if ($isScriptBlock) {
+                $name = $file
+                $lines = "{ $ScriptBlock }" -split "`n"
+            }
+            else {
+                $name = [IO.Path]::GetFileName($file)
+                $lines = Get-Content $file
+            }
+
             # each line in this file will gets its own object
             $lineProfiles = [Collections.Generic.List[object]]::new($lines.Length)
             $index = 0
@@ -266,12 +288,19 @@ function Trace-Script {
 
     Write-Host -ForegroundColor Magenta "Sorting trace events to file lines."
     foreach ($hit in $trace) {
-        if (-not $hit.Path -or -not ($fileMap.Contains($hit.Path))) {
-            continue
+        if (-not $hit.IsInFile) {
+            $path = "<scriptblock>"
+        } 
+        else { 
+            if (-not ($fileMap.Contains($hit.Path))) {
+                continue
+            }
+            $path = $hit.Path
         }
+        
 
         # get the object that describes this particular file
-        $lineProfiles = $fileMap[$hit.Path]
+        $lineProfiles = $fileMap[$path]
 
         $lineProfile = $lineProfiles[$hit.Line - 1] # array indexes from 0, but lines from 1
         $lineProfile.SelfDuration += $hit.SelfDuration
