@@ -425,7 +425,7 @@ function Trace-Script {
         Top50SelfDuration = $top50SelfDuration
         Top50SelfAverage  = $top50SelfAverage
         TotalDuration     = $total
-        AllLines          = $allLines
+        AllLines          = $all
         Events            = $trace
         Files             = foreach ($pair in $fileMap.GetEnumerator()) {
             [PSCustomObject]@{
