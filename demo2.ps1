@@ -21,8 +21,8 @@ Invoke-Script -ScriptBlock $scriptBlock -Preheat 0 -Repeat 3 -Flag $flag
 # At this point you probably improved your performance a bit. Run the profiler again, 
 # this time providing the -Flag to enable running the new code. 
 
-# Runs the script 1 time, with 1 warm up run (this is needed in PowerShell 7) using the 
-# code After the changes. You can switch back to before changes by adding `-Before`.
+# Runs the script 1 time, with 1 warm up run using the  code After the changes. 
+# You can switch back to before changes by adding `-Before`.
 $trace = Trace-Script -ScriptBlock $scriptBlock -Preheat 1 -Flag $flag
 
 # Shows the top 50 lines that take the most percent of the run
