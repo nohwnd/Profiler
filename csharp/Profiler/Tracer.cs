@@ -76,8 +76,9 @@ namespace Profiler
                 var extent = (IScriptExtent)currentPositionProperty.GetValue(functionContext);
                 
                 Trace(extent, scriptBlock, level);
+                // Set-PSDebug -Trace 1 is no longer automatically logged for some reason,
+                // but we get the & $ScriptBlock like our first event
             };
-            TraceLine();
         }
 
         public static void Unpatch ()
