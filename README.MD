@@ -79,6 +79,16 @@ Running profiling multiple times in a row keeps the previous times to show you y
 Original prototype of this module is demoed [here on Youtube](https://www.youtube.com/watch?v=qLjDjm-nvLQ) The commands were renamed, but the way you can work with the resulting trace remained the same.
 
 
+## Knows issues:
+
+This module is under heavy development, it should stabilize soon because I will start writing tests. Here are some limitations of my current desing that I know how to fix, I just did not have time to do it yet:
+
+- Files that are detected but don't exist anymore are skipped during the trace processing.
+- This includes unsaved files in VSCode.
+- Unbound scriptblocks cause null reference exceptions in the trace processing. 
+- Lines of internal code from the module may appear in the overview of the execution.
+
+
 
 
 
