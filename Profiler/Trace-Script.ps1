@@ -144,81 +144,6 @@ function Trace-Script {
     $traceCount = $trace.Count
 
     Write-Host -ForegroundColor Magenta "Processing $($traceCount) trace events. $(if (1000000 -lt $traceCount) { "This might take a while..."})"
-    if ($null -ne $FilterPath -and 0 -lt @($FilterPath).Count) {
-        $files = $Path | ForEach-Object { (Resolve-Path $_).Path }
-    }
-    else {
-        $unique = [Collections.Generic.HashSet[string]]::new()
-        # skip first event and the last because they come from the measure script
-        # they are the lines where we enable and disable tracing. # don't remove them
-        # from the trace just yet. We need the timestamp to calculate correct time
-        # for the last real event
-        foreach ($f in $Trace[1..($Trace.Length - 2)]) { 
-            if (!$f.IsInFile) {
-                $null = $unique.Add('<scriptblock>')
-            }
-            else { 
-                $null = $unique.Add($f.Path)
-            }
-        }
-        $files = foreach ($v in $unique.GetEnumerator()) { $v }
-    }
-
-    Write-Host -ForegroundColor Magenta "Loading sources for $($files.Count) files."
-
-    $fileMap = @{}
-    foreach ($file in $files) {
-        if ($file -and -not $fileMap.ContainsKey($file)) {
-            $isScriptBlock = $false
-            $isMissing = $false
-            if ("<scriptblock>" -eq $file) {
-                $isScriptBlock = $true
-            } 
-            elseif (-not (Test-Path $file)) { 
-                Write-Host "File $file does not exists on disk. It will be reconstructed from the lines that were invoked and parts of it might be missing."
-                $isMissing = $true
-                continue
-            }
-            
-            if ($isScriptBlock) {
-                $name = $file
-                $lines = "{ $ScriptBlock }" -split "`n"
-            }
-            else {
-                $name = [IO.Path]::GetFileName($file)
-                $lines = Get-Content $file
-            }
-
-            # each line in this file will gets its own object
-            $lineProfiles = [Collections.Generic.List[object]]::new($lines.Length)
-            $index = 0
-            foreach ($line in $lines) {
-                $lineProfile = [PSCustomObject] @{
-                    Percent      = 0
-                    HitCount     = 0 
-                    Duration     = [TimeSpan]::Zero
-                    Average      = [TimeSpan]::Zero
-                    SelfDuration = [TimeSpan]::Zero
-                    SelfAverage  = [TimeSpan]::Zero
-
-                    Name         = $name
-                    Line         = ++$index # start from 1 as in file
-                    Text         = $line
-                    Path         = $file
-                    Hits         = [Collections.Generic.List[object]]::new()
-                    CommandHits  = @{}
-                }
-
-                $lineProfiles.Add($lineProfile)
-            }
-
-            $fileMap.Add($file, $lineProfiles)
-        }
-        else { 
-            # skip the file, because we already processed it, this is an alternative to sorting the list 
-            # of files and getting unique, but that would be slower
-        }
-    }
 
     Write-Host -ForegroundColor Magenta "Figuring out flow."
     $stack = [System.Collections.Generic.Stack[int]]::new()
@@ -286,25 +211,52 @@ function Trace-Script {
         }
     }
 
-    Write-Host -ForegroundColor Magenta "Sorting trace events to file lines."
-    foreach ($hit in $trace) {
-        if (-not $hit.IsInFile) {
-            $path = "<scriptblock>"
-        } 
-        else { 
-            if (-not ($fileMap.Contains($hit.Path))) {
-                continue
-            }
-            $path = $hit.Path
+    Write-Host -ForegroundColor Magenta "Sorting events into lines."
+    # map of scriptblocks/files and lines
+    $fileMap = @{}
+    # excluding start and stop internal events
+    foreach ($hit in $trace[1..($traceCount-2)]) {
+        $key = if ($hit.IsInFile) { $hit.Path } else { $hit.ScriptBlockId }
+        if (-not $fileMap.ContainsKey($key)) { 
+            $fileMap.Add($key, @{
+                    Path = $key
+                    Name = if ($hit.IsInFile) { [IO.Path]::GetFileName($key) } else { $key }
+                    Lines = @{}
+                })
         }
+
         
+        $file = $fileMap[$key]
 
-        # get the object that describes this particular file
-        $lineProfiles = $fileMap[$path]
+        $lineNumber = $hit.Line
+        if (-not $file.Lines.ContainsKey($lineNumber)) {
+            $lineProfile = [PSCustomObject] @{
+                Percent      = 0
+                HitCount     = 0 
+                Duration     = [TimeSpan]::Zero
+                Average      = [TimeSpan]::Zero
+                SelfDuration = [TimeSpan]::Zero
+                SelfAverage  = [TimeSpan]::Zero
+    
+                Name         = $file.Name
+                Line         = $lineNumber
+                Text         = $hit.Text
+                Path         = $key
+                IsInFile     = $false
+                Hits         = [Collections.Generic.List[object]]::new()
+                CommandHits  = @{}
+            }
+            $file.Lines.Add($lineNumber, $lineProfile)
+        }
 
-        $lineProfile = $lineProfiles[$hit.Line - 1] # array indexes from 0, but lines from 1
+        $lineProfile = $file.Lines[$lineNumber]
+
+        if ($hit.Text.Length -gt $lineProfile.Text.Length) { 
+            # lines are initialized with {, on the next hit we get 
+            # the full line in the scriptblock text, use that longer one
+            $lineProfile.Text = $hit.Text
+        }
         $lineProfile.SelfDuration += $hit.SelfDuration
-        # $lineProfile.Duration += $hit.Duration
         $lineProfile.HitCount++
         $lineProfile.Hits.Add($hit)
 
@@ -337,7 +289,9 @@ function Trace-Script {
     Write-Host -ForegroundColor Magenta "Figuring out durations per line."
     foreach ($k in $fileMap.Keys) { 
         $file = $fileMap[$k]
-        foreach ($line in $file) {
+        $lineNumbers = $file.Lines.Keys | ForEach-Object { [int]::Parse($_) } | Sort-Object;
+        foreach ($lineNumber in $lineNumbers) {
+            $line = $file.Lines[$lineNumber]
             # we can have calls that call into the same line
             # simply adding durations together gives us times
             # that can be way more than the execution time of the 
@@ -366,13 +320,12 @@ function Trace-Script {
     $total = if ($null -ne $trace -and 0 -lt @($trace).Count) { [TimeSpan]::FromTicks($trace[-1].Timestamp - $trace[1].Timestamp) } else { [TimeSpan]::Zero }
 
     Write-Host -ForegroundColor Magenta "Counting averages and percentages."
-    # this is like SelectMany, it joins the arrays of arrays
-    # into a single array
-    $all = $fileMap.Values | Foreach-Object { $_ } | ForEach-Object {
-        $_.SelfAverage = if ($_.HitCount -eq 0) { [TimeSpan]::Zero } else { [TimeSpan]::FromTicks($_.SelfDuration.Ticks / $_.HitCount) }
-        $_.Average = if ($_.HitCount -eq 0) { [TimeSpan]::Zero } else { [TimeSpan]::FromTicks($_.Duration.Ticks / $_.HitCount) }
-        $_.Percent = [Math]::Round($_.Duration.Ticks / $total.Ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
-        $_
+    # this is like SelectMany, it lists all the lines in all files into a single array
+    $all = foreach ($line in $fileMap.Values.Lines.Values) {
+        $line.SelfAverage = if ($line.HitCount -eq 0) { [TimeSpan]::Zero } else { [TimeSpan]::FromTicks($line.SelfDuration.Ticks / $line.HitCount) }
+        $line.Average = if ($line.HitCount -eq 0) { [TimeSpan]::Zero } else { [TimeSpan]::FromTicks($line.Duration.Ticks / $line.HitCount) }
+        $line.Percent = [Math]::Round($line.Duration.Ticks / $total.Ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
+        $line
     }
 
     Write-Host -ForegroundColor Magenta "Getting Top50 that take most percent of the run."
@@ -425,14 +378,15 @@ function Trace-Script {
         Top50SelfDuration = $top50SelfDuration
         Top50SelfAverage  = $top50SelfAverage
         TotalDuration     = $total
-        AllLines          = $allLines
+        AllLines          = $all
         Events            = $trace
-        Files             = foreach ($pair in $fileMap.GetEnumerator()) {
-            [PSCustomObject]@{
-                Path    = $pair.Key
-                Profile = $pair.Value
-            }
-        }
+        # Files             = foreach ($pair in $fileMap.GetEnumerator()) {
+        #     [PSCustomObject]@{
+        #         Path = $pair.Key
+        #         Name = $pair.Value.Name
+        #         Lines = $pair.Value.Lines | Sort-Object -Property Name
+        #     }
+        # }
     }
 
     $script:processedTrace
@@ -486,7 +440,7 @@ function Trace-Script {
         Write-Host -ForegroundColor Yellow $total
     }
     
-    Write-Host -ForegroundColor Magenta "Done. Try $(if ($variable) { "$($variable)" } else { '$yourVariable' }).Top50 | Format-Table to get the report. There are also Top50Duration, Top50Average, Top50SelfDuration, Top50SelfAverage, Top50HitCount, All, Events and Files."
+    Write-Host -ForegroundColor Magenta "Done. Try $(if ($variable) { "$($variable)" } else { '$yourVariable' }).Top50 | Format-Table to get the report. There are also Top50Duration, Top50Average, Top50SelfDuration, Top50SelfAverage, Top50HitCount, AllLines and Events."
 }
 
 function Get-LatestTrace { 

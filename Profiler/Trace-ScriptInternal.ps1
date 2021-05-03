@@ -124,8 +124,21 @@ function Measure-ScriptHarmony ($ScriptBlock) {
         $err = $_
     }
 
-    @{
+    $result = @{
         Trace = [Profiler.Tracer]::Hits
         Error = $err
     }
+
+    if ($null -eq $result.Trace -or 0 -eq @($result.Trace).Count) { 
+        throw "Trace is null or empty."
+    }
+
+    $lastLine = $result.Trace[-1]
+
+    $disableCommand = "Set-PSDebug -Trace 0"
+    if ($PSCommandPath -ne $lastLine.Path -or $disableCommand -ne $lastLine.Text) { 
+        Write-Warning "Event list is incomplete, it should end with '$disableCommand' from within Profiler module, but instead ends with entry '$($lastLine.Text)', from '$($lastLine.Path)'. Are you disabling trace mode in your code using Set-PSDebug -Trace 0 or using Remove-PSBreakpoint?"
+    }
+
+    $result
 }
