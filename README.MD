@@ -1,6 +1,6 @@
 # Profiler
 
-Script, ScriptBlock and module performance profiler for PowerShell 5, and PowerShell 7. 
+Script, ScriptBlock and module performance profiler for PowerShell 5, and PowerShell 7 that works in Windows, Linux and MacOS. 
 
 ## Quick start
 
@@ -11,8 +11,7 @@ Install-Module Profiler
 ```
 
 ```powershell
-# Runs the script 1 time, with 1 warm up run (this is needed in PowerShell 7)
-$trace =  Trace-Script -Preheat 1 -ScriptBlock { & "demo-scripts/MyScript.ps1" }
+$trace =  Trace-Script -ScriptBlock { & "demo-scripts/MyScript.ps1" }
 $trace.Top50Duration | Format-Table
 ```
 

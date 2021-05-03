@@ -7,35 +7,14 @@ function Trace-Script {
     .PARAMETER ScriptBlock
     A ScriptBlock to be profiled.
 
-    $trace = Trace-Script -ScriptBlock { Import-Module $PSScriptRoot\Planets.psm1; Get-Planet } -Preheat 1
+    $trace = Trace-Script -ScriptBlock { Import-Module $PSScriptRoot\Planets.psm1; Get-Planet }
 
     When running a script file use the same syntax, you can specify parameters if you need: 
-    $trace = Invoke-Script -ScriptBlock { & $PSScriptRoot\MyScript.ps1 } -Preheat 1
-
-    -Preheat 1 is recommended on PowerShell 7 because the profiler does not work fully on the first run.
-    See below.
+    $trace = Invoke-Script -ScriptBlock { & $PSScriptRoot\MyScript.ps1 }
 
     .PARAMETER Preheat
     Run the provided script or command this many times without tracing it to warm up the session.
     This is good for measuring normal performance excluding startup. Default is 0.
-
-    -Preheat 1 is recommended on PowerShell 7 because the profiler does not work fully on the first run.
-
-    This is unfortunate for testing code that imports modules. Modules import much faster on second run
-    when they are still in scope. In such cases, it is recommended to add code at the end of the scriptblock 
-    that will remove modules and forces them to import again. But don't remove Profiler. This will still miss
-    assembly loading and similar static stuff, but it is better than nothing.
-
-    $trace = Trace-Script -ScriptBlock {
-        & $Profile
-
-        Get-Module | Where-Object Name -NE Profiler | Remove-Module
-    } -Preheat 1
-
-    This is a current limitation that will be removed if come up with a better hack to hook the profiler.
-    Or when the native profiler is released. 
-
-    The current profiler also cannot profile code running in other runspaces.
 
     .PARAMETER DisableWarning
     Disable warning about Preheat on PowerShell 7.

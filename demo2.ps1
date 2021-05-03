@@ -23,7 +23,7 @@ Invoke-Script -ScriptBlock $scriptBlock -Preheat 0 -Repeat 3 -Flag $flag
 
 # Runs the script 1 time, with 1 warm up run using the  code After the changes. 
 # You can switch back to before changes by adding `-Before`.
-$trace = Trace-Script -ScriptBlock $scriptBlock -Preheat 1 -Flag $flag
+$trace = Trace-Script -ScriptBlock $scriptBlock -Flag $flag
 
 # Shows the top 50 lines that take the most percent of the run
 $trace.Top50Duration | Format-Table
