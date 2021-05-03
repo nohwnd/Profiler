@@ -2,11 +2,20 @@ BeforeAll {
 
     function Should-Take {
         param (
-            [string] $Expected, 
+            $Expected, 
             [string] $OrLessBy = "0ms",  
             [Parameter(ValueFromPipeline)]
             [TimeSpan] $Actual
         )
+
+        if ($null -eq $Expected) { 
+            throw "Expected is null, but should be timespan or ms."
+        }
+
+        if ($Expected -is [timespan]) { 
+            $Expected = "$([int]$Expected.TotalMilliseconds)ms"
+        }
+
         $null, $unit = $Expected -split "\d+", 2
         $time, $null = [int]($Expected -split "\D+", 2)[0]
         if ("ms" -ne $unit) { 
@@ -63,18 +72,18 @@ Describe "Should-Take" {
 Describe "Trace-Script" { 
     It "Can profile a scriptblock" { 
         $trace = Trace-Script { Start-Sleep -Milliseconds 100 }
-        $trace.TotalDuration | Should-Take 120ms -OrLessBy 21ms
+        $trace.TotalDuration | Should-Take $trace.StopwatchDuration -OrLessBy 25ms
     }
 
     It "Can profile an unbound scriptblock" { 
         $scriptBlock = [ScriptBlock]::Create({ Start-Sleep -Milliseconds 100 })
         $trace = Trace-Script $scriptBlock
-        $trace.TotalDuration | Should-Take 120ms -OrLessBy 21ms
+        $trace.TotalDuration | Should-Take $trace.StopwatchDuration -OrLessBy 25ms
     }
 
     It "Can profile a simple script" { 
         "Start-Sleep -Milliseconds 100" > TestDrive:\MyScript1.ps1
         $trace = Trace-Script { & TestDrive:\MyScript1.ps1 }
-        $trace.TotalDuration | Should-Take 120ms -OrLessBy 21ms
+        $trace.TotalDuration | Should-Take $trace.StopwatchDuration -OrLessBy 25ms
     }
 }

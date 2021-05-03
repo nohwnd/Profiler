@@ -139,7 +139,8 @@ function Trace-Script {
 
     $invokedAs = $MyInvocation.Line
 
-    $trace = Trace-ScriptInternal -ScriptBlock $ScriptBlock -Preheat $Preheat -DisableWarning:$DisableWarning -Flag $Flag -UseNativePowerShell7Profiler:$UseNativePowerShell7Profiler -Before:$Before
+    $out = @{ Stopwatch = [TimeSpan]::Zero }
+    $trace = Trace-ScriptInternal -ScriptBlock $ScriptBlock -Preheat $Preheat -DisableWarning:$DisableWarning -Flag $Flag -UseNativePowerShell7Profiler:$UseNativePowerShell7Profiler -Before:$Before -Out $out
 
     $traceCount = $trace.Count
 
@@ -324,7 +325,8 @@ function Trace-Script {
     $all = foreach ($line in $fileMap.Values.Lines.Values) {
         $line.SelfAverage = if ($line.HitCount -eq 0) { [TimeSpan]::Zero } else { [TimeSpan]::FromTicks($line.SelfDuration.Ticks / $line.HitCount) }
         $line.Average = if ($line.HitCount -eq 0) { [TimeSpan]::Zero } else { [TimeSpan]::FromTicks($line.Duration.Ticks / $line.HitCount) }
-        $line.Percent = [Math]::Round($line.Duration.Ticks / $total.Ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
+        $ticks = if (0 -ne $total.Ticks) { $total.Ticks } else { 1 }
+        $line.Percent = [Math]::Round($line.Duration.Ticks / $ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
         $line
     }
 
@@ -378,6 +380,7 @@ function Trace-Script {
         Top50SelfDuration = $top50SelfDuration
         Top50SelfAverage  = $top50SelfAverage
         TotalDuration     = $total
+        StopwatchDuration = $out.Stopwatch
         AllLines          = $all
         Events            = $trace
         # Files             = foreach ($pair in $fileMap.GetEnumerator()) {
