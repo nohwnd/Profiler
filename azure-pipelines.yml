@@ -22,6 +22,9 @@ stages:
             PS7_Windows_Server2019:
               vmImage: windows-2019
               pwsh: true
+            PS7_Ubuntu_18_04:
+              vmImage: ubuntu-18.04
+              pwsh: true
             PS_5_1_Windows_Server2019:
               vmImage: windows-2019
               pwsh: false
