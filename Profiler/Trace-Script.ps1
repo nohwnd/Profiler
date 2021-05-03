@@ -139,7 +139,8 @@ function Trace-Script {
 
     $invokedAs = $MyInvocation.Line
 
-    $trace = Trace-ScriptInternal -ScriptBlock $ScriptBlock -Preheat $Preheat -DisableWarning:$DisableWarning -Flag $Flag -UseNativePowerShell7Profiler:$UseNativePowerShell7Profiler -Before:$Before
+    $out = @{ Stopwatch = [TimeSpan]::Zero }
+    $trace = Trace-ScriptInternal -ScriptBlock $ScriptBlock -Preheat $Preheat -DisableWarning:$DisableWarning -Flag $Flag -UseNativePowerShell7Profiler:$UseNativePowerShell7Profiler -Before:$Before -Out $out
 
     $traceCount = $trace.Count
 
@@ -379,6 +380,7 @@ function Trace-Script {
         Top50SelfDuration = $top50SelfDuration
         Top50SelfAverage  = $top50SelfAverage
         TotalDuration     = $total
+        StopwatchDuration = $out.Stopwatch
         AllLines          = $all
         Events            = $trace
         # Files             = foreach ($pair in $fileMap.GetEnumerator()) {

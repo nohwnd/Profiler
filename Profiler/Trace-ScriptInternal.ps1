@@ -7,7 +7,10 @@ function Trace-ScriptInternal {
         [Switch] $DisableWarning,
         [Hashtable] $Flag,
         [Switch] $Before,
-        [Switch] $UseNativePowerShell7Profiler
+        [Switch] $UseNativePowerShell7Profiler,
+        # Putting the collection into object will make it modified when returned for some reason
+        # outputting time through this
+        $Out
     )
 
     $ErrorView = "Normal"
@@ -34,7 +37,6 @@ function Trace-ScriptInternal {
         foreach ($i in 1..$Preheat) {
             Write-Host -Foreground Magenta  "Warm up $i"
 
-
             if ($UseNativePowerShell7Profiler) {
                 $null = Measure-Script $ScriptBlock
             }
@@ -56,7 +58,6 @@ function Trace-ScriptInternal {
     }
 
     Write-Host -Foreground Magenta  "Tracing..."
-    $sw = [System.Diagnostics.Stopwatch]::StartNew()
 
     if ($UseNativePowerShell7Profiler) {
         $result = Measure-Script $ScriptBlock
@@ -64,18 +65,18 @@ function Trace-ScriptInternal {
     else {
         $result = Measure-ScriptHarmony $ScriptBlock
     }
-    $sw.Stop()
     if ($null -eq $result.Error) {
-        Write-Host -Foreground Magenta  "Run $i$(if (1 -lt $sides.Count) { " - $side" }) finished after $($sw.Elapsed)"
+        Write-Host -Foreground Magenta  "Run$(if (1 -lt $sides.Count) { " - $side" }) finished after $($result.Stopwatch)"
     }
     else {
-        Write-Host -ForegroundColor Red "Run $i$(if (1 -lt $sides.Count) { " - $side" }) failed after $($sw.Elapsed) with $($result.Error)."
+        Write-Host -ForegroundColor Red "Run$(if (1 -lt $sides.Count) { " - $side" }) failed after $($result.Stopwatch) with $($result.Error)."
     }
 
+    $out.Stopwatch = $result.Stopwatch
     $trace = $result.Trace
-    $normalizedTrace = [Collections.Generic.List[Profiler.ProfileEventRecord]]::new($trace.Count)
     Write-Host -Foreground Magenta "Tracing done. Got $($trace.Count) trace events."
     if ($UseNativePowerShell7Profiler) {
+        $normalizedTrace = [Collections.Generic.List[Profiler.ProfileEventRecord]]::new($trace.Count)
         Write-Host "Used native tracer from PowerShell 7. Normalizing trace."
         foreach ($t in $trace) { 
             $r = [Profiler.ProfileEventRecord]::new()
@@ -101,11 +102,12 @@ function Trace-ScriptInternal {
         $normalizedTrace
     }
     else { 
-        $trace
+       $trace
     }
 }
 
 function Measure-ScriptHarmony ($ScriptBlock) {
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
     try {
         # ensure all output to pipeline is dumped
         $null = & {
@@ -123,10 +125,12 @@ function Measure-ScriptHarmony ($ScriptBlock) {
     catch {
         $err = $_
     }
+    $sw.Stop()
 
     $result = @{
         Trace = [Profiler.Tracer]::Hits
         Error = $err
+        Stopwatch = $sw.Elapsed
     }
 
     if ($null -eq $result.Trace -or 0 -eq @($result.Trace).Count) { 
