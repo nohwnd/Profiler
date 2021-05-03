@@ -344,16 +344,17 @@ function Trace-Script {
     Sort-Object -Property HitCount -Descending | 
     Select-Object -First 50
 
-    $script:processedTrace = [PSCustomObject] @{ 
-        Top50Duration     = [Profiler.LineProfile[]] $top50Duration
-        Top50Average      = [Profiler.LineProfile[]] $top50Average
-        Top50HitCount     = [Profiler.LineProfile[]] $top50HitCount
-        Top50SelfDuration = [Profiler.LineProfile[]] $top50SelfDuration
-        Top50SelfAverage  = [Profiler.LineProfile[]] $top50SelfAverage
+
+    $script:processedTrace = [Profiler.Trace] @{ 
+        Top50Duration     = $top50Duration
+        Top50Average      = $top50Average
+        Top50HitCount     = $top50HitCount
+        Top50SelfDuration = $top50SelfDuration
+        Top50SelfAverage  = $top50SelfAverage
         TotalDuration     = $total
         StopwatchDuration = $out.Stopwatch
-        AllLines          = [Profiler.LineProfile[]] $all
-        Events            = [System.Collections.Generic.List[Profiler.ProfileEventRecord]] $trace
+        AllLines          = $all
+        Events            = $trace
         # Files             = foreach ($pair in $fileMap.GetEnumerator()) {
         #     [PSCustomObject]@{
         #         Path = $pair.Key
