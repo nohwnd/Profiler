@@ -215,7 +215,7 @@ function Trace-Script {
     # map of scriptblocks/files and lines
     $fileMap = @{}
     # excluding start and stop internal events
-    foreach ($hit in $trace[1..($traceCount-2)]) {
+    foreach ($hit in $trace[2..($traceCount-3)]) {
         $key = if ($hit.IsInFile) { $hit.Path } else { $hit.ScriptBlockId }
         if (-not $fileMap.ContainsKey($key)) { 
             $fileMap.Add($key, @{
@@ -316,8 +316,8 @@ function Trace-Script {
     }
 
     # trace starts with event from the measurement script where we enable tracing and ends with event where we disable it
-    # events are timestamped at the start so user code duration is from the second event (index 1), till the last event (index -1) where we disable tracing
-    $total = if ($null -ne $trace -and 0 -lt @($trace).Count) { [TimeSpan]::FromTicks($trace[-1].Timestamp - $trace[1].Timestamp) } else { [TimeSpan]::Zero }
+    # events are timestamped at the start so user code duration is from the second event (index 1), till the last real event (index -2) where we disable tracing
+    $total = if ($null -ne $trace -and 0 -lt @($trace).Count) { [TimeSpan]::FromTicks($trace[-2].Timestamp - $trace[2].Timestamp) } else { [TimeSpan]::Zero }
 
     Write-Host -ForegroundColor Magenta "Counting averages and percentages."
     # this is like SelectMany, it lists all the lines in all files into a single array
