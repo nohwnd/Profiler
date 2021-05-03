@@ -17,4 +17,4 @@ Import-Module $PSScriptRoot/Profiler/Profiler.psm1 -Force
 
 $trace = Trace-Script $recursiveScriptBlock -Preheat 1
 
-$trace.Top50 | Format-Table
+$trace.Top50Duration | Format-Table
