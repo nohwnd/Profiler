@@ -1,6 +1,6 @@
-param ($Clean) 
+param ([Switch] $Clean) 
 if ($Clean) {
-    & "$PSScriptRoot/build.ps1"
+    & "$PSScriptRoot/build.ps1" -Clean:$Clean
 }
 
 if (-not (Get-Module Pester -List | Where-Object Version -GE 5.2.0)) {
