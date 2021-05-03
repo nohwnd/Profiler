@@ -26,7 +26,7 @@ Invoke-Script -ScriptBlock $scriptBlock -Preheat 0 -Repeat 3 -Flag $flag
 $trace = Trace-Script -ScriptBlock $scriptBlock -Preheat 1 -Flag $flag
 
 # Shows the top 50 lines that take the most percent of the run
-$trace.Top50 | Format-Table
+$trace.Top50Duration | Format-Table
 
 
 # Try it for yourself by running the commands from this demo, or by invoking this file as

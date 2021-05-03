@@ -329,20 +329,6 @@ function Trace-Script {
         $line.Percent = [Math]::Round($line.Duration.Ticks / $ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
         $line
     }
-
-    Write-Host -ForegroundColor Magenta "Getting Top50 that take most percent of the run."
-
-    $top50Percent = $all | 
-    Where-Object Percent -gt 0 | 
-    Sort-Object -Property Percent -Descending | 
-    Select-Object -First 50
-
-    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest average Duration."
-
-    $top50Average = $all | 
-    Where-Object Average -gt 0 | 
-    Sort-Object -Property Average -Descending | 
-    Select-Object -First 50
         
     Write-Host -ForegroundColor Magenta "Getting Top50 with the longest Duration."
 
@@ -351,18 +337,25 @@ function Trace-Script {
     Sort-Object -Property Duration -Descending | 
     Select-Object -First 50
 
-    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest average SelfDuration."
+    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest average Duration."
 
-    $top50SelfAverage = $all | 
-    Where-Object SelfAverage -gt 0 | 
-    Sort-Object -Property SelfAverage -Descending | 
+    $top50Average = $all | 
+    Where-Object Average -gt 0 | 
+    Sort-Object -Property Average -Descending | 
     Select-Object -First 50
-        
+
     Write-Host -ForegroundColor Magenta "Getting Top50 with the longest SelfDuration."
 
     $top50SelfDuration = $all |
     Where-Object SelfDuration -gt 0 | 
     Sort-Object -Property SelfDuration -Descending | 
+    Select-Object -First 50
+
+    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest average SelfDuration."
+
+    $top50SelfAverage = $all | 
+    Where-Object SelfAverage -gt 0 | 
+    Sort-Object -Property SelfAverage -Descending | 
     Select-Object -First 50
     
     Write-Host -ForegroundColor Magenta "Getting Top50 with the most hits."
@@ -373,9 +366,8 @@ function Trace-Script {
     Select-Object -First 50
 
     $script:processedTrace = [PSCustomObject] @{ 
-        Top50             = $top50Percent
-        Top50Average      = $top50Average
         Top50Duration     = $top50Duration
+        Top50Average      = $top50Average
         Top50HitCount     = $top50HitCount
         Top50SelfDuration = $top50SelfDuration
         Top50SelfAverage  = $top50SelfAverage
@@ -393,7 +385,6 @@ function Trace-Script {
     }
 
     $script:processedTrace
-
 
     $variable = if ($invokedAs -match "(\$\S*)\s*=\s*Trace-Script") {
         "$($matches[1])"
@@ -443,7 +434,7 @@ function Trace-Script {
         Write-Host -ForegroundColor Yellow $total
     }
     
-    Write-Host -ForegroundColor Magenta "Done. Try $(if ($variable) { "$($variable)" } else { '$yourVariable' }).Top50 | Format-Table to get the report. There are also Top50Duration, Top50Average, Top50SelfDuration, Top50SelfAverage, Top50HitCount, AllLines and Events."
+    Write-Host -ForegroundColor Magenta "Done. Try $(if ($variable) { "$($variable)" } else { '$yourVariable' }).Top50Duration | Format-Table to get the report. There are also Top50Average, Top50SelfDuration, Top50SelfAverage, Top50HitCount, AllLines and Events."
 }
 
 function Get-LatestTrace { 

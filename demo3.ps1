@@ -20,10 +20,10 @@ Import-Module $PSScriptRoot/Profiler/Profiler.psm1 -Force
 # Runs the script
 $trace = Trace-Script { & "demo-scripts/SleepyScript.ps1" }
 
-$trace.Top50 | Format-Table
+$trace.Top50Duration | Format-Table
 
 # oooh call to function 'c' is slow
-$slowLine = $trace.Top50 | Where-Object text -eq 'c'
+$slowLine = $trace.Top50Duration | Where-Object text -eq 'c'
 $slowLine | Format-Table
 
 # it was called just once (hit), and by itself (SelfDuration) takes < 1ms, but the code it calls 

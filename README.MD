@@ -13,7 +13,7 @@ Install-Module Profiler
 ```powershell
 # Runs the script 1 time, with 1 warm up run (this is needed in PowerShell 7)
 $trace =  Trace-Script -Preheat 1 -ScriptBlock { & "demo-scripts/MyScript.ps1" }
-$trace.Top50 | Format-Table
+$trace.Top50Duration | Format-Table
 ```
 
 ![](images/Profile.jpg)
@@ -62,7 +62,7 @@ Invoke-Script -ScriptBlock $scriptBlock -Preheat 0 -Repeat 3 -Flag $flag
 # Looks like you did not assign the output to a variable. Use Get-LatestTrace to retrieve the trace, e.g.: $trace = Get-LatestTrace
 
 $trace = Get-LatestTrace
-$trace.Top50 | Format-Table
+$trace.Top50Duration | Format-Table
 ```
 
 - Progress of your changes
