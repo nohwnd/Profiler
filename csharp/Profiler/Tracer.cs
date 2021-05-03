@@ -19,6 +19,8 @@ namespace Profiler
         internal static int _index = 0;
         internal static Action TraceLine;
         private static Action ResetUI;
+        // 1 on windows, 100 on linux
+        private static long _stopwatchDivider = Stopwatch.Frequency / TimeSpan.TicksPerSecond;
 
         public static List<ProfileEventRecord> Hits { get; } = new List<ProfileEventRecord>();
         public static Dictionary<Guid, ScriptBlock> UnboundScriptBlocks { get; } = new Dictionary<Guid, ScriptBlock>();
@@ -106,7 +108,7 @@ namespace Profiler
 
         public static void Trace(IScriptExtent extent, ScriptBlock scriptBlock, int level)
         {
-            var timestamp = Stopwatch.GetTimestamp();
+            var timestamp = Stopwatch.GetTimestamp() / _stopwatchDivider;
             // we are using structs so we need to insert the final struct to the 
             // list instead of inserting it to the list, and keeping reference to modify it later
             // so when we are on second event (index 1) we modify the first (index 0) with the correct

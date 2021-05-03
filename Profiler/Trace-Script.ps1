@@ -324,7 +324,8 @@ function Trace-Script {
     $all = foreach ($line in $fileMap.Values.Lines.Values) {
         $line.SelfAverage = if ($line.HitCount -eq 0) { [TimeSpan]::Zero } else { [TimeSpan]::FromTicks($line.SelfDuration.Ticks / $line.HitCount) }
         $line.Average = if ($line.HitCount -eq 0) { [TimeSpan]::Zero } else { [TimeSpan]::FromTicks($line.Duration.Ticks / $line.HitCount) }
-        $line.Percent = [Math]::Round($line.Duration.Ticks / $total.Ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
+        $ticks = if (0 -ne $total.Ticks) { $total.Ticks } else { 1 }
+        $line.Percent = [Math]::Round($line.Duration.Ticks / $ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
         $line
     }
 
