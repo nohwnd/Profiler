@@ -210,21 +210,21 @@ function Trace-Script {
 
         $lineNumber = $hit.Line
         if (-not $file.Lines.ContainsKey($lineNumber)) {
-            $lineProfile = [PSCustomObject] @{
-                Percent      = 0
-                HitCount     = 0 
-                Duration     = [TimeSpan]::Zero
-                Average      = [TimeSpan]::Zero
-                SelfDuration = [TimeSpan]::Zero
-                SelfAverage  = [TimeSpan]::Zero
+            $lineProfile = [Profiler.LineProfile] @{
+                # Percent      = 0
+                # HitCount     = 0 
+                # Duration     = [TimeSpan]::Zero
+                # Average      = [TimeSpan]::Zero
+                # SelfDuration = [TimeSpan]::Zero
+                # SelfAverage  = [TimeSpan]::Zero
     
                 Name         = $file.Name
                 Line         = $lineNumber
                 Text         = $hit.Text
                 Path         = $key
-                IsInFile     = $false
-                Hits         = [Collections.Generic.List[object]]::new()
-                CommandHits  = @{}
+                # IsInFile     = $false # Not available in class
+                # Hits         = [System.Collections.Generic.List[Profiler.ProfileEventRecord]]::new()
+                # CommandHits  = New-Object 'System.Collections.Generic.Dictionary[Uint,Profiler.CommandHit]'
             }
             $file.Lines.Add($lineNumber, $lineProfile)
         }
@@ -254,12 +254,12 @@ function Trace-Script {
             $commandHit.HitCount++
         }
         else { 
-            $commandHit = [PSCustomObject] @{
+            $commandHit = [Profiler.CommandHit] @{
                 Line         = $hit.Line # start from 1 as in file
                 Column       = $hit.Column
                 SelfDuration = $hit.SelfDuration
-                # Duration     = 0
-                HitCount     = 1
+                # Duration     = 0 # Not available in class
+                # HitCount     = 1
                 Text         = $hit.Text
             }
             $lineProfile.CommandHits.Add($hit.Column, $commandHit)
@@ -345,15 +345,15 @@ function Trace-Script {
     Select-Object -First 50
 
     $script:processedTrace = [PSCustomObject] @{ 
-        Top50Duration     = $top50Duration
-        Top50Average      = $top50Average
-        Top50HitCount     = $top50HitCount
-        Top50SelfDuration = $top50SelfDuration
-        Top50SelfAverage  = $top50SelfAverage
+        Top50Duration     = [Profiler.LineProfile[]] $top50Duration
+        Top50Average      = [Profiler.LineProfile[]] $top50Average
+        Top50HitCount     = [Profiler.LineProfile[]] $top50HitCount
+        Top50SelfDuration = [Profiler.LineProfile[]] $top50SelfDuration
+        Top50SelfAverage  = [Profiler.LineProfile[]] $top50SelfAverage
         TotalDuration     = $total
         StopwatchDuration = $out.Stopwatch
-        AllLines          = $all
-        Events            = $trace
+        AllLines          = [Profiler.LineProfile[]] $all
+        Events            = [System.Collections.Generic.List[Profiler.ProfileEventRecord]] $trace
         # Files             = foreach ($pair in $fileMap.GetEnumerator()) {
         #     [PSCustomObject]@{
         #         Path = $pair.Key
