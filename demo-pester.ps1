@@ -12,4 +12,4 @@ $sb = {
 
 $trace = Trace-Script $sb -Preheat 0
 
-  # $trace.Top50 | Format-Table 
+  # $trace.Top50Duration | Format-Table 
