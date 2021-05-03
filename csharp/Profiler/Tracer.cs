@@ -24,15 +24,13 @@ namespace Profiler
 
         public static List<ProfileEventRecord> Hits { get; } = new List<ProfileEventRecord>();
         public static Dictionary<Guid, ScriptBlock> UnboundScriptBlocks { get; } = new Dictionary<Guid, ScriptBlock>();
+        public static Dictionary<string, ScriptBlock> FileScriptBlocks { get; } = new Dictionary<string, ScriptBlock>();
 
         public static void Patch(EngineIntrinsics context, PSHostUserInterface ui)
         {
-            Hits.Clear();
-            UnboundScriptBlocks.Clear();
-            _index = 0;
-            _previousHit = default;
+            Clear();
 
-            _ui = ui; 
+            _ui = ui;
             // we get InternalHostUserInterface, grab external ui from that and replace it with ours
             _externalUIField = ui.GetType().GetField("_externalUI", BindingFlags.Instance | BindingFlags.NonPublic);
             _externalUI = (PSHostUserInterface)_externalUIField.GetValue(ui);
@@ -74,14 +72,23 @@ namespace Profiler
                 object functionContext = lastFunctionContextMethod.Invoke(callStack, empty);
                 var scriptBlock = (ScriptBlock)scriptBlockField.GetValue(functionContext);
                 var extent = (IScriptExtent)currentPositionProperty.GetValue(functionContext);
-                
+
                 Trace(extent, scriptBlock, level);
                 // Set-PSDebug -Trace 1 is no longer automatically logged for some reason,
                 // but we get the & $ScriptBlock like our first event
             };
         }
 
-        public static void Unpatch ()
+        public static void Clear()
+        {
+            Hits.Clear();
+            UnboundScriptBlocks.Clear();
+            FileScriptBlocks.Clear();
+            _index = 0;
+            _previousHit = default;
+        }
+
+        public static void Unpatch()
         {
             TraceLine();
             _externalUIField.SetValue(_ui, _externalUI);
@@ -103,9 +110,16 @@ namespace Profiler
 
             if (string.IsNullOrEmpty(scriptBlock.File))
             {
-                if (!UnboundScriptBlocks.ContainsKey(scriptBlock.Id)   )
+                if (!UnboundScriptBlocks.ContainsKey(scriptBlock.Id))
                 {
                     UnboundScriptBlocks.Add(scriptBlock.Id, scriptBlock);
+                }
+            }
+            else
+            {
+                if (!FileScriptBlocks.ContainsKey(scriptBlock.File))
+                {
+                    FileScriptBlocks.Add(scriptBlock.File, scriptBlock);
                 }
             }
 
