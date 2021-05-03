@@ -1,19 +1,56 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
-- main
+  - main
 
-pool:
-  vmImage: ubuntu-latest
+pr:
+  - main
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+variables:
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+  CI: 1
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+stages:
+  - stage: Test
+    jobs:
+      - job:
+        workspace:
+          clean: all
+        strategy:
+          matrix:
+            PS7_macOS_10_15_Catalina:
+              vmImage: macOS-10.15
+              pwsh: true
+            PS7_Windows_Server2019:
+              vmImage: windows-2019
+              pwsh: true
+            PS7_Ubuntu_18_04:
+              vmImage: ubuntu-18.04
+              pwsh: true
+            PS_5_1_Windows_Server2019:
+              vmImage: windows-2019
+              pwsh: false
+        pool:
+          vmImage: $[ variables['vmImage'] ]
+        steps:
+          - task: PowerShell@2
+            displayName: 'Test Profiler'
+            inputs:
+              targetType: inline
+              pwsh: $(pwsh)
+              script: |
+                & ./test.ps1 -Clean
+              workingDirectory: '$(Build.SourcesDirectory)'
+          # - task: PublishCodeCoverageResults@1
+          #   inputs:
+          #     codeCoverageTool: 'JaCoCo'
+          #     summaryFileLocation: 'coverage.xml'
+          #     pathToSources: 'src/'
+          #     failIfCoverageEmpty: false
+          #   condition: succeededOrFailed()
+          # - task: PublishTestResults@2
+          #   inputs:
+          #     testResultsFormat: 'NUnit'
+          #     testResultsFiles: 'testResults.xml'
+          #     failTaskOnFailedTests: true
+          #   condition: succeededOrFailed()
+        timeoutInMinutes: 20
+

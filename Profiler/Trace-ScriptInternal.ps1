@@ -110,7 +110,7 @@ function Measure-ScriptHarmony ($ScriptBlock) {
         # ensure all output to pipeline is dumped
         $null = & {
             try {
-                [Profiler.Tracer]::Patch($ExecutionContext, $host.UI)
+                [Profiler.Tracer]::Patch($PSVersionTable.PSVersion.Major, $ExecutionContext, $host.UI)
                 Set-PSDebug -Trace 1
                 & $ScriptBlock
             } 
@@ -135,7 +135,7 @@ function Measure-ScriptHarmony ($ScriptBlock) {
 
     $lastLine = $result.Trace[-1]
 
-    $disableCommand = "Set-PSDebug -Trace 0"
+    $disableCommand = "[Profiler.Tracer]::Unpatch()"
     if ($PSCommandPath -ne $lastLine.Path -or $disableCommand -ne $lastLine.Text) { 
         Write-Warning "Event list is incomplete, it should end with '$disableCommand' from within Profiler module, but instead ends with entry '$($lastLine.Text)', from '$($lastLine.Path)'. Are you disabling trace mode in your code using Set-PSDebug -Trace 0 or using Remove-PSBreakpoint?"
     }

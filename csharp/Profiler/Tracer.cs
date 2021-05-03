@@ -17,26 +17,29 @@ namespace Profiler
     {
         internal static ProfileEventRecord _previousHit;
         internal static int _index = 0;
-        private static PSHostUserInterface _ui;
-        private static FieldInfo _externalUIField;
-        private static PSHostUserInterface _externalUI;
-        public static Action TraceLine;
+        internal static Action TraceLine;
+        private static Action ResetUI;
 
         public static List<ProfileEventRecord> Hits { get; } = new List<ProfileEventRecord>();
         public static Dictionary<Guid, ScriptBlock> UnboundScriptBlocks { get; } = new Dictionary<Guid, ScriptBlock>();
         public static Dictionary<string, ScriptBlock> FileScriptBlocks { get; } = new Dictionary<string, ScriptBlock>();
 
-        public static void Patch(EngineIntrinsics context, PSHostUserInterface ui)
+        public static void Patch (int version, EngineIntrinsics context, PSHostUserInterface ui)
         {
             Clear();
 
-            _ui = ui;
+            var uiFieldName = version >= 7 ? "_externalUI" : "externalUI";
             // we get InternalHostUserInterface, grab external ui from that and replace it with ours
-            _externalUIField = ui.GetType().GetField("_externalUI", BindingFlags.Instance | BindingFlags.NonPublic);
-            _externalUI = (PSHostUserInterface)_externalUIField.GetValue(ui);
+            var externalUIField = ui.GetType().GetField(uiFieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+            var externalUI = (PSHostUserInterface)externalUIField.GetValue(ui);
 
             // replace it with out patched up UI that writes to profiler on debug
-            _externalUIField.SetValue(ui, new ProfilerUI(_externalUI));
+            externalUIField.SetValue(ui, new ProfilerUI(externalUI));
+
+            ResetUI = () =>
+            {
+                externalUIField.SetValue(ui, externalUI);
+            };
 
             // getting MethodInfo of context._context.Debugger.TraceLine
             var bf = BindingFlags.NonPublic | BindingFlags.Instance;
@@ -74,9 +77,13 @@ namespace Profiler
                 var extent = (IScriptExtent)currentPositionProperty.GetValue(functionContext);
 
                 Trace(extent, scriptBlock, level);
-                // Set-PSDebug -Trace 1 is no longer automatically logged for some reason,
-                // but we get the & $ScriptBlock like our first event
+
             };
+
+            // Add another event to the top apart from the scriptblock invocation
+            // in Trace-ScriptInternal, this makes it more consistently work on first
+            // run. Without this, the triggering line sometimes does not show up as 99.9%
+            TraceLine();
         }
 
         public static void Clear()
@@ -90,8 +97,11 @@ namespace Profiler
 
         public static void Unpatch()
         {
+            // Add Set-PSDebug -Trace 0 event and also another one for the internal disable
+            // this make first run more consistent for some reason
             TraceLine();
-            _externalUIField.SetValue(_ui, _externalUI);
+            TraceLine();
+            ResetUI();
         }
 
         public static void Trace(IScriptExtent extent, ScriptBlock scriptBlock, int level)

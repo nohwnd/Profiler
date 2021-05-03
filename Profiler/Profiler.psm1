@@ -1,5 +1,10 @@
 # for BP to attach
-Import-Module "$PSScriptRoot/bin/net452/Profiler.dll" -ErrorAction Stop
+if ($PSVersionTable.PSVersion.Major -ge 7) {
+    [Reflection.Assembly]::LoadFrom("$PSScriptRoot/bin/netstandard2.0/Profiler.dll")
+}
+else {
+    [Reflection.Assembly]::LoadFrom("$PSScriptRoot/bin/net452/Profiler.dll")
+}
 
 # last 10 runs, show times to see how it went
 
