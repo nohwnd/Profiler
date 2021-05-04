@@ -105,9 +105,7 @@ Describe "Trace-Script" {
         } }
         $trace = Trace-Script $sb
 
-        # get line inside foreach-object.
-        # sorting by text as lines are default sorted by Name which is unpredictable with scriptblocks
-        $inner = $trace.AllLines | Sort-Object Text | Select-Object -Last 1
+        $inner = $trace.AllLines | Where-Object Text -like '$i = $_*2; *'  | Select-Object -Last 1
 
         $inner.HitCount | Should -BeExactly 4
         foreach ($k in $inner.CommandHits.Keys) {
