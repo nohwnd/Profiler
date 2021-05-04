@@ -31,5 +31,13 @@ namespace Profiler
         /// Command text.
         /// </summary>
         public string Text { get; set; }
+
+        public CommandHit(ProfileEventRecord hit)
+        {
+            Line         = (uint)hit.Line;
+            Column       = (uint)hit.Column;
+            SelfDuration = hit.SelfDuration;
+            Text         = hit.Text;
+        }
     }
 }

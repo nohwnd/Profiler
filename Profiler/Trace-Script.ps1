@@ -254,14 +254,7 @@ function Trace-Script {
             $commandHit.HitCount++
         }
         else { 
-            $commandHit = [Profiler.CommandHit] @{
-                Line         = $hit.Line # start from 1 as in file
-                Column       = $hit.Column
-                SelfDuration = $hit.SelfDuration
-                # Duration     = 0 # Not available in class
-                # HitCount     = 1
-                Text         = $hit.Text
-            }
+            $commandHit = [Profiler.CommandHit]::new($hit)
             $lineProfile.CommandHits.Add($hit.Column, $commandHit)
         }
     }
