@@ -210,21 +210,11 @@ function Trace-Script {
 
         $lineNumber = $hit.Line
         if (-not $file.Lines.ContainsKey($lineNumber)) {
-            $lineProfile = [PSCustomObject] @{
-                Percent      = 0
-                HitCount     = 0 
-                Duration     = [TimeSpan]::Zero
-                Average      = [TimeSpan]::Zero
-                SelfDuration = [TimeSpan]::Zero
-                SelfAverage  = [TimeSpan]::Zero
-    
+            $lineProfile = [Profiler.LineProfile] @{
                 Name         = $file.Name
                 Line         = $lineNumber
                 Text         = $hit.Text
                 Path         = $key
-                IsInFile     = $false
-                Hits         = [Collections.Generic.List[object]]::new()
-                CommandHits  = @{}
             }
             $file.Lines.Add($lineNumber, $lineProfile)
         }
@@ -254,14 +244,7 @@ function Trace-Script {
             $commandHit.HitCount++
         }
         else { 
-            $commandHit = [PSCustomObject] @{
-                Line         = $hit.Line # start from 1 as in file
-                Column       = $hit.Column
-                SelfDuration = $hit.SelfDuration
-                # Duration     = 0
-                HitCount     = 1
-                Text         = $hit.Text
-            }
+            $commandHit = [Profiler.CommandHit]::new($hit)
             $lineProfile.CommandHits.Add($hit.Column, $commandHit)
         }
     }
@@ -344,7 +327,8 @@ function Trace-Script {
     Sort-Object -Property HitCount -Descending | 
     Select-Object -First 50
 
-    $script:processedTrace = [PSCustomObject] @{ 
+
+    $script:processedTrace = [Profiler.Trace] @{ 
         Top50Duration     = $top50Duration
         Top50Average      = $top50Average
         Top50HitCount     = $top50HitCount
@@ -354,13 +338,6 @@ function Trace-Script {
         StopwatchDuration = $out.Stopwatch
         AllLines          = $all
         Events            = $trace
-        # Files             = foreach ($pair in $fileMap.GetEnumerator()) {
-        #     [PSCustomObject]@{
-        #         Path = $pair.Key
-        #         Name = $pair.Value.Name
-        #         Lines = $pair.Value.Lines | Sort-Object -Property Name
-        #     }
-        # }
     }
 
     $script:processedTrace

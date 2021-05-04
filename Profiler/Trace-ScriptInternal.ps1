@@ -70,7 +70,7 @@ function Trace-ScriptInternal {
         Write-Host -Foreground Magenta  "Run$(if (1 -lt $sides.Count) { " - $side" }) finished after $($result.Stopwatch)."
     }
     else {
-        Write-Host -ForegroundColor Red "Run$(if (1 -lt $sides.Count) { " - $side" }) failed after $($result.Stopwatch) with $($result.Error)."
+        Write-Host -ForegroundColor Red "Run$(if (1 -lt $sides.Count) { " - $side" }) failed after $($result.Stopwatch) with the following error:`n$($result.Error)."
     }
 
     $out.Stopwatch = $result.Stopwatch
