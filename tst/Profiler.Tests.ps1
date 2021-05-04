@@ -86,4 +86,50 @@ Describe "Trace-Script" {
         $trace = Trace-Script { & TestDrive:\MyScript1.ps1 }
         $trace.TotalDuration | Should-Take $trace.StopwatchDuration -OrLessBy 25ms
     }
+
+    It 'Returns trace for events up to and including exception' {
+        $sb = {
+            'Before' > $null
+            throw "We're going down"
+            'After' > $null
+        }
+
+        $trace = Trace-Script $sb
+        $trace.AllLines.Count | Should -BeExactly 3 # first line is {
+        $trace.AllLines[0].Text | Should -Match '^throw' -Because 'the last line profiled should be the line throwing the exception'
+    }
+
+    It 'Counts hits both for lines and command hits on the same line' {
+        $sb = { 1..2 | Foreach-Object { 
+            $i = $_*2; Write-Output $i > $null
+        } }
+        $trace = Trace-Script $sb
+
+        # get line inside foreach-object.
+        # sorting by text as lines are default sorted by Name which is unpredictable with scriptblocks
+        $inner = $trace.AllLines | Sort-Object Text | Select-Object -Last 1
+
+        $inner.HitCount | Should -BeExactly 4
+        foreach ($k in $inner.CommandHits.Keys) {
+            $inner.CommandHits[$k].HitCount | Should -BeExactly 2 -Because 'command was executed twice'
+        }
+    }
+
+    It 'Reported timings are within valid range' {
+        $sb = { 1..2 | Foreach-Object { 
+            $i = $_*2
+            Start-Sleep -Milliseconds 10
+        } }
+        
+        $trace = Trace-Script $sb
+
+        foreach ($line in $trace.AllLines) {
+            $line.SelfDuration | Should -BeLessOrEqual $line.Duration -Because 'no line can be slower than itself'
+            $line.Duration | Should -BeLessOrEqual $trace.TotalDuration -Because 'no line can be slower than all'
+
+            foreach ($command in $line.CommandHits.GetEnumerator()) {
+                $command.SelfDuration | Should -BeLessOrEqual $line.SelfDuration -Because 'no command can be slower than the whole line'
+            }
+        }
+    }
 }
