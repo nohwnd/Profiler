@@ -1,6 +1,6 @@
 $script:totals = [System.Collections.Queue]::new()
 function Trace-Script {
-    <# 
+    <#
     .DESCRIPTION
     Invoke the provided script or command and profile its execution.
 
@@ -9,7 +9,7 @@ function Trace-Script {
 
     $trace = Trace-Script -ScriptBlock { Import-Module $PSScriptRoot\Planets.psm1; Get-Planet }
 
-    When running a script file use the same syntax, you can specify parameters if you need: 
+    When running a script file use the same syntax, you can specify parameters if you need:
     $trace = Invoke-Script -ScriptBlock { & $PSScriptRoot\MyScript.ps1 }
 
     .PARAMETER Preheat
@@ -26,9 +26,9 @@ function Trace-Script {
     For this to work your code needs to cooperate:
 
     Each key from the hashtable will be defined as a $global: variable. Use that variable in `if` to wrap
-    the new code to test it against the old code. 
+    the new code to test it against the old code.
 
-    Use $true, $false as the values. The hashtable represents the after side. Each key will be 
+    Use $true, $false as the values. The hashtable represents the after side. Each key will be
     defined with the value for after side. Each key will be defined with $false for the before side.
 
     In this case example is worth 1000 words:
@@ -41,12 +41,12 @@ function Trace-Script {
         $newValues += $v + 10
     }
 
-    Modified code with changes that you think are faster wrapped in if using the feature flags: 
+    Modified code with changes that you think are faster wrapped in if using the feature flags:
     if ($_profiler) {
         $values =  [System.Linq.Enumerable]::Range(1,1000)
     }
     else {
-        $values = 1..1000 
+        $values = 1..1000
     }
 
     if ($_profiler) {
@@ -60,8 +60,8 @@ function Trace-Script {
         }
     }
 
-    A single feature flag might be good enough for many purposes, but imagine there are multiple improvements 
-    that migh contradict each other, in that case you are better of adding different flag for each one: 
+    A single feature flag might be good enough for many purposes, but imagine there are multiple improvements
+    that migh contradict each other, in that case you are better of adding different flag for each one:
 
     Trace-Script -ScriptBlock { & MyScript.ps1 } -Flag @{ _iteration = $true; _enumerable = $true }
 
@@ -69,7 +69,7 @@ function Trace-Script {
         $values =  [System.Linq.Enumerable]::Range(1,1000)
     }
     else {
-        $values = 1..1000 
+        $values = 1..1000
     }
 
     if ($_iteration) {
@@ -83,7 +83,7 @@ function Trace-Script {
         }
     }
 
-    Using two or more feature flags you can test them together as shown above, or one without the other: 
+    Using two or more feature flags you can test them together as shown above, or one without the other:
 
     Trace-Script -ScriptBlock { & MyScript.ps1 } -Flag @{ _iteration = $true; _enumerable = $false }
 
@@ -108,11 +108,11 @@ function Trace-Script {
         # [Switch] $UseNativePowerShell7Profiler
     )
 
-    if ($Before -and $After) { 
+    if ($Before -and $After) {
         Write-Warning "You should not use -Before and -After together, using -After."
     }
 
-    if ($After) { 
+    if ($After) {
         $Before = $false
     }
 
@@ -130,8 +130,8 @@ function Trace-Script {
 
     $caller = $null
     foreach ($hit in $trace) {
-        # there is next event in the trace, 
-        # we can use it to see if we remained in the 
+        # there is next event in the trace,
+        # we can use it to see if we remained in the
         # function or returned
 
         if ($hit.Index -lt $traceCount - 2) {
@@ -140,7 +140,7 @@ function Trace-Script {
             # we are going down into a function, meaning this is a call
             if ($nextEvent.Level -gt $hit.Level) {
                 $hit.Flow = [Profiler.CallReturnProcess]::Call
-                # save where we entered 
+                # save where we entered
                 $stack.Push($hit.Index)
                 $hit.CallerIndex = $caller
                 $caller = $hit.Index
@@ -155,7 +155,7 @@ function Trace-Script {
                 while ($stack.Count -ge $hit.Level) {
                     $callIndex = $stack.Pop()
                     $call = $trace[$callIndex]
-                    # events are timestamped at the start, so start of when we called until 
+                    # events are timestamped at the start, so start of when we called until
                     # the next one after we returned is the duration of the whole call
                     $call.Duration = [TimeSpan]::FromTicks($nextEvent.Timestamp - $call.Timestamp)
                     # save into the call where it returned so we can see the events in the
@@ -166,15 +166,15 @@ function Trace-Script {
                     $trace[$callIndex] = $call
                 }
 
-                # return from a function is not calling anything 
+                # return from a function is not calling anything
                 # so the duration and self duration are the same
                 $hit.Duration = $hit.SelfDuration
                 $hit.ReturnIndex = $hit.Index
                 # who called us
                 $hit.CallerIndex = $caller
             }
-            else { 
-                # we stay in the function in the next step, so we did 
+            else {
+                # we stay in the function in the next step, so we did
                 # not call anyone or did not return, we are just processing
                 # the duration is the selfduration
                 $hit.Flow = [Profiler.CallReturnProcess]::Process
@@ -194,18 +194,29 @@ function Trace-Script {
     Write-Host -ForegroundColor Magenta "Sorting events into lines."
     # map of scriptblocks/files and lines
     $fileMap = @{}
+    $contentMap = @{}
     # excluding start and stop internal events
     foreach ($hit in $trace[2..($traceCount-3)]) {
-        $key = if ($hit.IsInFile) { $hit.Path } else { $hit.ScriptBlockId }
-        if (-not $fileMap.ContainsKey($key)) { 
+        $key = $hit.ScriptBlockId
+        if (-not $contentMap.ContainsKey($key)) {
+            $content = [Profiler.Tracer]::ScriptBlocks[$key]
+            $lines = $content -split "`n"
+            $contentMap.Add($key, $lines)
+        }
+
+        $scriptBlock = [Profiler.Tracer]::ScriptBlocks[$key]
+        $lines = $contentMap[$key]
+        $line = $lines[$hit.Line-$ScriptBlock.StartPosition.StartLine]
+
+        if (-not $fileMap.ContainsKey($key)) {
             $fileMap.Add($key, @{
-                    Path = $key
-                    Name = if ($hit.IsInFile) { [IO.Path]::GetFileName($key) } else { $key }
+                    Path = if ($hit.IsInFile) { $hit.Path } else { $key }
+                    Name = if ($hit.IsInFile) { [IO.Path]::GetFileName($hit.Path) } else { $key }
                     Lines = @{}
                 })
         }
 
-        
+
         $file = $fileMap[$key]
 
         $lineNumber = $hit.Line
@@ -213,19 +224,15 @@ function Trace-Script {
             $lineProfile = [Profiler.LineProfile] @{
                 Name         = $file.Name
                 Line         = $lineNumber
-                Text         = $hit.Text
-                Path         = $key
+                # use the whole line we get from scriptblock, but if it is empty, there is open or close curly so print that
+                Text         = if ([string]::IsNullOrEmpty($line.Trim())) { $hit.Text.Trim() } else { $line.Trim() }
+                Path         = $file.Path
             }
             $file.Lines.Add($lineNumber, $lineProfile)
         }
 
         $lineProfile = $file.Lines[$lineNumber]
 
-        if ($hit.Text.Length -gt $lineProfile.Text.Length) { 
-            # lines are initialized with {, on the next hit we get 
-            # the full line in the scriptblock text, use that longer one
-            $lineProfile.Text = $hit.Text
-        }
         $lineProfile.SelfDuration += $hit.SelfDuration
         $lineProfile.HitCount++
         $lineProfile.Hits.Add($hit)
@@ -234,8 +241,8 @@ function Trace-Script {
         # on the same line so we can see which commands contributed to the line duration
         # if we need to count duration we can do it by moving this to the next part of the code
         # where we process each hit on the line
-        if ($lineProfile.CommandHits.ContainsKey($hit.Column)) { 
-            $commandHit = $lineProfile.CommandHits[$hit.Column] 
+        if ($lineProfile.CommandHits.ContainsKey($hit.Column)) {
+            $commandHit = $lineProfile.CommandHits[$hit.Column]
             $commandHit.SelfDuration += $hit.SelfDuration
             # do not track duration for now, we are not listing each call to the command
             # so we cannot add the durations correctly, because we need to exclude recursive calls
@@ -243,33 +250,33 @@ function Trace-Script {
             # $commandHit.Duration += $hit.Duration
             $commandHit.HitCount++
         }
-        else { 
+        else {
             $commandHit = [Profiler.CommandHit]::new($hit)
             $lineProfile.CommandHits.Add($hit.Column, $commandHit)
         }
     }
 
     Write-Host -ForegroundColor Magenta "Figuring out durations per line."
-    foreach ($k in $fileMap.Keys) { 
+    foreach ($k in $fileMap.Keys) {
         $file = $fileMap[$k]
         $lineNumbers = $file.Lines.Keys | ForEach-Object { [int]::Parse($_) } | Sort-Object;
         foreach ($lineNumber in $lineNumbers) {
             $line = $file.Lines[$lineNumber]
             # we can have calls that call into the same line
             # simply adding durations together gives us times
-            # that can be way more than the execution time of the 
+            # that can be way more than the execution time of the
             # whole script because the line is accounted for multiple
             # times. This is best visible when calling recursive function
             # each subsequent call would add up to the previous ones
             # https://twitter.com/nohwnd/status/1388418452130603008?s=20
             # so we need to check if we are not in the current function
             # by keeping the highest return index and only adding the time
-            # when we have index that is higher than it, meaning we are 
+            # when we have index that is higher than it, meaning we are
             # now running after we returned from the function
             $returnIndex = 0
             $duration = [timespan]::Zero
             foreach ($hit in $line.Hits) {
-                if ($hit.Index -gt $returnIndex) { 
+                if ($hit.Index -gt $returnIndex) {
                     $duration += $hit.Duration
                     $returnIndex = $hit.ReturnIndex
                 }
@@ -291,44 +298,44 @@ function Trace-Script {
         $line.Percent = [Math]::Round($line.Duration.Ticks / $ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
         $line
     }
-        
+
     Write-Host -ForegroundColor Magenta "Getting Top50 with the longest Duration."
 
     $top50Duration = $all |
-    Where-Object Duration -gt 0 | 
-    Sort-Object -Property Duration -Descending | 
+    Where-Object Duration -gt 0 |
+    Sort-Object -Property Duration -Descending |
     Select-Object -First 50
 
     Write-Host -ForegroundColor Magenta "Getting Top50 with the longest average Duration."
 
-    $top50Average = $all | 
-    Where-Object Average -gt 0 | 
-    Sort-Object -Property Average -Descending | 
+    $top50Average = $all |
+    Where-Object Average -gt 0 |
+    Sort-Object -Property Average -Descending |
     Select-Object -First 50
 
     Write-Host -ForegroundColor Magenta "Getting Top50 with the longest SelfDuration."
 
     $top50SelfDuration = $all |
-    Where-Object SelfDuration -gt 0 | 
-    Sort-Object -Property SelfDuration -Descending | 
+    Where-Object SelfDuration -gt 0 |
+    Sort-Object -Property SelfDuration -Descending |
     Select-Object -First 50
 
     Write-Host -ForegroundColor Magenta "Getting Top50 with the longest average SelfDuration."
 
-    $top50SelfAverage = $all | 
-    Where-Object SelfAverage -gt 0 | 
-    Sort-Object -Property SelfAverage -Descending | 
+    $top50SelfAverage = $all |
+    Where-Object SelfAverage -gt 0 |
+    Sort-Object -Property SelfAverage -Descending |
     Select-Object -First 50
-    
+
     Write-Host -ForegroundColor Magenta "Getting Top50 with the most hits."
 
-    $top50HitCount = $all | 
+    $top50HitCount = $all |
     Where-Object HitCount -gt 0 |
-    Sort-Object -Property HitCount -Descending | 
+    Sort-Object -Property HitCount -Descending |
     Select-Object -First 50
 
 
-    $script:processedTrace = [Profiler.Trace] @{ 
+    $script:processedTrace = [Profiler.Trace] @{
         Top50Duration     = $top50Duration
         Top50Average      = $top50Average
         Top50HitCount     = $top50HitCount
@@ -354,57 +361,57 @@ function Trace-Script {
     $previous = if (0 -lt $totals.Count) {
         $totals.ToArray()[-1]
     }
-    
-    $diff = if ($null -eq $previous) { 
+
+    $diff = if ($null -eq $previous) {
         0
     }
-    else { 
+    else {
         [int] ($total.TotalMilliseconds - $previous.Total.TotalMilliseconds)
     }
 
-    $color = if (0 -eq $diff) { 
+    $color = if (0 -eq $diff) {
         "Yellow"
     }
-    elseif (0 -gt $diff) { 
+    elseif (0 -gt $diff) {
         "Green"
     }
     else {
         "Red"
     }
 
-    $totals.Enqueue(@{ Color = $color; Diff = $diff ; Total = $total; Before = $Before } )    
+    $totals.Enqueue(@{ Color = $color; Diff = $diff ; Total = $total; Before = $Before } )
     while ($totals.Count -gt 5) { $null = $totals.Dequeue() }
     if (1 -lt $totals.Count) {
-        Write-Host -ForegroundColor Magenta "Progress: " -NoNewline 
+        Write-Host -ForegroundColor Magenta "Progress: " -NoNewline
 
         $i = 0
         foreach ($t in $totals) {
-            $last = $i -eq ($totals.Count - 1) 
+            $last = $i -eq ($totals.Count - 1)
 
-            Write-Host -ForegroundColor $t.Color "$(if ($t.Before) { "B:" } else {"A:" }) $($t.Total) ($($t.Diff) ms)$(if (-not $last) {" -> "} else { "`n" })" -NoNewline 
+            Write-Host -ForegroundColor $t.Color "$(if ($t.Before) { "B:" } else {"A:" }) $($t.Total) ($($t.Diff) ms)$(if (-not $last) {" -> "} else { "`n" })" -NoNewline
             $i++
         }
     }
     else {
-        Write-Host -ForegroundColor Magenta "Duration: $(if ($Before) { "B:" } else {"A:" }) " -NoNewline 
+        Write-Host -ForegroundColor Magenta "Duration: $(if ($Before) { "B:" } else {"A:" }) " -NoNewline
         Write-Host -ForegroundColor Yellow $total
     }
-    
+
     Write-Host -ForegroundColor Magenta "Done. Try $(if ($variable) { "$($variable)" } else { '$yourVariable' }).Top50Duration | Format-Table to get the report. There are also Top50Average, Top50SelfDuration, Top50SelfAverage, Top50HitCount, AllLines and Events."
 }
 
-function Get-LatestTrace { 
-    if ($script:processedTrace) { 
+function Get-LatestTrace {
+    if ($script:processedTrace) {
         $script:processedTrace
     }
-    else { 
+    else {
         Write-Warning "There is no trace yet. Run Trace-Script. For example Trace-Script -ScriptBlock { & yourfile.ps1 }."
     }
 }
 
 
 function Show-ScriptExecution {
-    # .DESCRIPTION Show how the script executed with margin to show how deep the call was, this is just for fun. 
+    # .DESCRIPTION Show how the script executed with margin to show how deep the call was, this is just for fun.
     # You can slow down the excution x times to reflect the mimic the real execution delays.
     [CmdletBinding()]
     param(
@@ -418,13 +425,13 @@ function Show-ScriptExecution {
 
     $trace = if ($Trace) { $Trace } else { Get-LatestTrace }
 
-    $x = if ($x1000) { 
+    $x = if ($x1000) {
         1000
     }
-    elseif ($x100) { 
+    elseif ($x100) {
         100
     }
-    elseif ($x10) { 
+    elseif ($x10) {
         10
     }
     elseif ($x1) {
@@ -444,7 +451,7 @@ function Show-ScriptExecution {
         $ansi_escape = [char]27
     }
 
-    foreach ($e in $trace.Events) { 
+    foreach ($e in $trace.Events) {
         $text = $e.Extent.Text.Trim()
         $o = "$ansi_escape[48;2;$r;$g;${b}m$text$ansi_escape[0m"
         $margin = ' ' * ($e.Level)
@@ -457,25 +464,25 @@ function Show-ScriptExecution {
 
 
         if ($c) {
-    
+
             $r++
 
             if (254 -eq $r) {
-                $r = 0                     
+                $r = 0
                 $g++
 
-                if (254 -eq $g) { 
+                if (254 -eq $g) {
                     $g = 0
-                    $b++ 
+                    $b++
 
-                    if (254 -eq $b) { 
+                    if (254 -eq $b) {
                         $r = 0
                         $g = 0
                         $b = 0
                     }
                 }
             }
-          
+
             "$r $g $b"
         }
     }

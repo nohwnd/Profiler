@@ -25,7 +25,7 @@ namespace Profiler
         private static double _tickDivider = Stopwatch.Frequency / TimeSpan.TicksPerSecond;
 
         public static List<ProfileEventRecord> Hits { get; } = new List<ProfileEventRecord>();
-        public static Dictionary<Guid, ScriptBlock> UnboundScriptBlocks { get; } = new Dictionary<Guid, ScriptBlock>();
+        public static Dictionary<Guid, ScriptBlock> ScriptBlocks { get; } = new Dictionary<Guid, ScriptBlock>();
         public static Dictionary<string, ScriptBlock> FileScriptBlocks { get; } = new Dictionary<string, ScriptBlock>();
 
         public static void Patch(int version, EngineIntrinsics context, PSHostUserInterface ui)
@@ -147,7 +147,7 @@ namespace Profiler
         public static void Clear()
         {
             Hits.Clear();
-            UnboundScriptBlocks.Clear();
+            ScriptBlocks.Clear();
             FileScriptBlocks.Clear();
             _index = 0;
             _previousHit = default;
@@ -181,22 +181,22 @@ namespace Profiler
                 SetSelfDurationAndAddToHits(ref _previousHit, timestamp);
             }
 
-            if (string.IsNullOrEmpty(scriptBlock.File))
+
+#if !POWERSHELL3
+            if (!ScriptBlocks.ContainsKey(scriptBlock.Id))
             {
-# if !POWERSHELL3
-                if (!UnboundScriptBlocks.ContainsKey(scriptBlock.Id))
-                {
-                    UnboundScriptBlocks.Add(scriptBlock.Id, scriptBlock);
-                }
-#endif
+                ScriptBlocks.Add(scriptBlock.Id, scriptBlock);
             }
-            else
+#else
+            if (!string.IsNullOrEmpty(scriptBlock.File))
             {
+                var key = $"{scriptBlock.File}:{scriptBlock.StartPosition.StartLine}:{scriptBlock.StartPosition.StartColumn}";
                 if (!FileScriptBlocks.ContainsKey(scriptBlock.File))
                 {
                     FileScriptBlocks.Add(scriptBlock.File, scriptBlock);
                 }
-            }
+      }          
+#endif
 
             // overwrite the previous event because we already scraped it
             Tracer._previousHit = new ProfileEventRecord();
