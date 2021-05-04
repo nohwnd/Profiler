@@ -24,3 +24,10 @@ New-Item $destination -ItemType Directory -Force | Out-Null
 Copy-Item -Destination $destination -Path $sourceDir/Profiler.dll -Verbose
 Copy-Item -Destination $destination -Path $sourceDir/Profiler.pdb -Verbose
 
+$destination =  "$PSScriptRoot/Profiler/bin/net451"
+$sourceDir = "$PSScriptRoot/csharp/Profiler/bin/Debug/net451"
+New-Item $destination -ItemType Directory -Force | Out-Null
+
+Copy-Item -Destination $destination -Path $sourceDir/Profiler.dll -Verbose
+Copy-Item -Destination $destination -Path $sourceDir/Profiler.pdb -Verbose
+

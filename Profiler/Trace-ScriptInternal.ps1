@@ -57,7 +57,8 @@ function Trace-ScriptInternal {
         }
     }
 
-    Write-Host -Foreground Magenta  "Tracing..."
+    Write-Host -Foreground Magenta  "Starting trace."
+    Write-Host -Foreground Magenta  "Stopwatch $(if([Diagnostics.Stopwatch]::IsHighResolution) { "is" } else { "is not" }) high resolution, max resolution of timestamps is $([int] (1e9/[Diagnostics.Stopwatch]::Frequency))ns."
 
     if ($UseNativePowerShell7Profiler) {
         $result = Measure-Script $ScriptBlock
@@ -66,7 +67,7 @@ function Trace-ScriptInternal {
         $result = Measure-ScriptHarmony $ScriptBlock
     }
     if ($null -eq $result.Error) {
-        Write-Host -Foreground Magenta  "Run$(if (1 -lt $sides.Count) { " - $side" }) finished after $($result.Stopwatch)"
+        Write-Host -Foreground Magenta  "Run$(if (1 -lt $sides.Count) { " - $side" }) finished after $($result.Stopwatch)."
     }
     else {
         Write-Host -ForegroundColor Red "Run$(if (1 -lt $sides.Count) { " - $side" }) failed after $($result.Stopwatch) with the following error:`n$($result.Error)."
@@ -112,6 +113,17 @@ function Measure-ScriptHarmony ($ScriptBlock) {
         # ensure all output to pipeline is dumped
         $null = & {
             try {
+                # use this as a marker of position, scriptblocks are aware of the current line, so we can use it to 
+                # make this code not rely on exact line numbers
+                $here = {}
+                # add a dummy breakpoint and disable it, otherwise when someone calls Remove-PSBreakpoint and there are 
+                # no breakpoints left the debugger will disable itself. This could also be solved by adding global function
+                # that is generated as a proxy for Remove-PSBreakpoint and re-enables Set-PSDebug -Trace 1. That would 
+                # be more resilient to users who can remove all breakpoints including ours. But we would have to generate it
+                # and modify the code, and it would look weird in their code output. On the other hand we would not show up extra 
+                # breakpoint in VSCode (or other editor)
+                $bp = Set-PSBreakpoint -Script $PSCommandPath -Line $here.StartPosition.StartLine -Action {}
+                $bp | Disable-PSBreakpoint
                 [Profiler.Tracer]::Patch($PSVersionTable.PSVersion.Major, $ExecutionContext, $host.UI)
                 Set-PSDebug -Trace 1
                 & $ScriptBlock
@@ -119,6 +131,9 @@ function Measure-ScriptHarmony ($ScriptBlock) {
             finally {
                 Set-PSDebug -Trace 0
                 [Profiler.Tracer]::Unpatch()
+                if ($bp) { 
+                    $bp | Remove-PSBreakPoint
+                }
             }
         }
     }
