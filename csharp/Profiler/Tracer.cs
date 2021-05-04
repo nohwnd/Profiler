@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Security;
 using System.Threading;
 using Debugger = System.Diagnostics.Debugger;
+using NonGeneric = System.Collections;
 
 namespace Profiler
 {
@@ -17,16 +18,15 @@ namespace Profiler
     {
         internal static ProfileEventRecord _previousHit;
         internal static int _index = 0;
-        internal static Action TraceLine;
+        private static Action TraceLineAction;
         private static Action ResetUI;
-        // 1 on windows, 100 on linux
-        private static long _stopwatchDivider = Stopwatch.Frequency / TimeSpan.TicksPerSecond;
+        private static double _stopwatchDivider = Stopwatch.Frequency / TimeSpan.TicksPerSecond;
 
         public static List<ProfileEventRecord> Hits { get; } = new List<ProfileEventRecord>();
         public static Dictionary<Guid, ScriptBlock> UnboundScriptBlocks { get; } = new Dictionary<Guid, ScriptBlock>();
         public static Dictionary<string, ScriptBlock> FileScriptBlocks { get; } = new Dictionary<string, ScriptBlock>();
 
-        public static void Patch (int version, EngineIntrinsics context, PSHostUserInterface ui)
+        public static void Patch(int version, EngineIntrinsics context, PSHostUserInterface ui)
         {
             Clear();
 
@@ -54,38 +54,92 @@ namespace Profiler
 
             var callStackType = _callStack.GetType();
 
-            var countProperty = callStackType.GetProperty("Count", BindingFlags.Instance | BindingFlags.NonPublic);
+            var countBindingFlags = BindingFlags.Instance | BindingFlags.NonPublic;
+            if (version == 3)
+            {
+                // in PowerShell 3 callstack is List<CallStackInfo> not a struct CallStackList 
+                // Count is public property
+                countBindingFlags = BindingFlags.Instance | BindingFlags.Public;
+            }
+            var countProperty = callStackType.GetProperty("Count", countBindingFlags);
             var getCount = countProperty.GetMethod;
             var empty = new object[0];
             var stack = callStackField.GetValue(debugger);
             var initialLevel = (int)getCount.Invoke(stack, empty);
 
-            var lastFunctionContextMethod = callStackType.GetMethod("LastFunctionContext", BindingFlags.Instance | BindingFlags.NonPublic);
-
-            object functionContext1 = lastFunctionContextMethod.Invoke(callStackField.GetValue(debugger), empty);
-            var functionContextType = functionContext1.GetType();
-            var scriptBlockField = functionContextType.GetField("_scriptBlock", BindingFlags.Instance | BindingFlags.NonPublic);
-            var currentPositionProperty = functionContextType.GetProperty("CurrentPosition", BindingFlags.Instance | BindingFlags.NonPublic);
-
-            var scriptBlock1 = (ScriptBlock)scriptBlockField.GetValue(functionContext1);
-            var extent1 = (IScriptExtent)currentPositionProperty.GetValue(functionContext1);
-
-            TraceLine = () =>
+            if (version == 3 || version == 4)
             {
-                var callStack = callStackField.GetValue(debugger);
-                var level = (int)getCount.Invoke(callStack, empty) - initialLevel;
-                object functionContext = lastFunctionContextMethod.Invoke(callStack, empty);
-                var scriptBlock = (ScriptBlock)scriptBlockField.GetValue(functionContext);
-                var extent = (IScriptExtent)currentPositionProperty.GetValue(functionContext);
+                // we do the same operation as in the TraceLineAction below, but here 
+                // we resolve the static things like types and properties, and then in the 
+                // action we just use them to get the live data without the overhead of looking 
+                // up properties all the time. This might be internally done in the reflection code
+                // did not measure the impact, and it is probably done for us in the reflection api itself
+                // in modern verisons of runtime
+                var callStack1 = callStackField.GetValue(debugger);
+                var callStackList1 = (NonGeneric.IList)callStack1;
+                var level1 = callStackList1.Count - initialLevel;
+                var last1 = callStackList1[callStackList1.Count - 1];
+                var lastType = last1.GetType();
+                var functionContextProperty = lastType.GetProperty("FunctionContext", BindingFlags.NonPublic | BindingFlags.Instance);
+                var functionContext1 = functionContextProperty.GetValue(last1);
+                var functionContextType = functionContext1.GetType();
 
-                Trace(extent, scriptBlock, level);
+                var scriptBlockField = functionContextType.GetField("_scriptBlock", BindingFlags.Instance | BindingFlags.NonPublic);
+                var currentPositionProperty = functionContextType.GetProperty("CurrentPosition", BindingFlags.Instance | BindingFlags.NonPublic);
 
-            };
+                var scriptBlock1 = (ScriptBlock)scriptBlockField.GetValue(functionContext1);
+                var extent1 = (IScriptExtent)currentPositionProperty.GetValue(functionContext1);
+
+                TraceLineAction = () =>
+                {
+                    try
+                    {
+                        var callStack = callStackField.GetValue(debugger);
+                        var callStackList = (NonGeneric.IList)callStack;
+                        var level = callStackList.Count - initialLevel;
+                        var last = callStackList[callStackList.Count - 1];
+                        var functionContext = functionContextProperty.GetValue(last);
+
+                        var scriptBlock = (ScriptBlock)scriptBlockField.GetValue(functionContext);
+                        var extent = (IScriptExtent)currentPositionProperty.GetValue(functionContext);
+
+                        Trace(extent, scriptBlock, level);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex);
+                        Console.WriteLine(ex.StackTrace);
+                    }
+                };
+            }
+            else
+            {
+                var lastFunctionContextMethod = callStackType.GetMethod("LastFunctionContext", BindingFlags.Instance | BindingFlags.NonPublic);
+
+                object functionContext1 = lastFunctionContextMethod.Invoke(callStackField.GetValue(debugger), empty);
+                var functionContextType = functionContext1.GetType();
+                var scriptBlockField = functionContextType.GetField("_scriptBlock", BindingFlags.Instance | BindingFlags.NonPublic);
+                var currentPositionProperty = functionContextType.GetProperty("CurrentPosition", BindingFlags.Instance | BindingFlags.NonPublic);
+
+                var scriptBlock1 = (ScriptBlock)scriptBlockField.GetValue(functionContext1);
+                var extent1 = (IScriptExtent)currentPositionProperty.GetValue(functionContext1);
+
+                TraceLineAction = () =>
+                {
+                    var callStack = callStackField.GetValue(debugger);
+                    var level = (int)getCount.Invoke(callStack, empty) - initialLevel;
+                    object functionContext = lastFunctionContextMethod.Invoke(callStack, empty);
+                    var scriptBlock = (ScriptBlock)scriptBlockField.GetValue(functionContext);
+                    var extent = (IScriptExtent)currentPositionProperty.GetValue(functionContext);
+
+                    Trace(extent, scriptBlock, level);
+                };
+            }
 
             // Add another event to the top apart from the scriptblock invocation
             // in Trace-ScriptInternal, this makes it more consistently work on first
             // run. Without this, the triggering line sometimes does not show up as 99.9%
-            TraceLine();
+            TraceLineAction();
         }
 
         public static void Clear()
@@ -101,14 +155,19 @@ namespace Profiler
         {
             // Add Set-PSDebug -Trace 0 event and also another one for the internal disable
             // this make first run more consistent for some reason
-            TraceLine();
-            TraceLine();
+            TraceLineAction();
+            TraceLineAction();
             ResetUI();
         }
 
-        public static void Trace(IScriptExtent extent, ScriptBlock scriptBlock, int level)
+        public static void TraceLine()
         {
-            var timestamp = Stopwatch.GetTimestamp() / _stopwatchDivider;
+            TraceLineAction();
+        }
+
+        internal static void Trace(IScriptExtent extent, ScriptBlock scriptBlock, int level)
+        {
+            var timestamp = Stopwatch.GetTimestamp();
             // we are using structs so we need to insert the final struct to the 
             // list instead of inserting it to the list, and keeping reference to modify it later
             // so when we are on second event (index 1) we modify the first (index 0) with the correct
@@ -122,10 +181,12 @@ namespace Profiler
 
             if (string.IsNullOrEmpty(scriptBlock.File))
             {
+# if !POWERSHELL3
                 if (!UnboundScriptBlocks.ContainsKey(scriptBlock.Id))
                 {
                     UnboundScriptBlocks.Add(scriptBlock.Id, scriptBlock);
                 }
+#endif
             }
             else
             {
@@ -140,7 +201,9 @@ namespace Profiler
             Tracer._previousHit.StartTime = TimeSpan.FromTicks(timestamp);
             Tracer._previousHit.Index = _index;
             Tracer._previousHit.IsInFile = !string.IsNullOrWhiteSpace(extent.File);
+# if !POWERSHELL3
             Tracer._previousHit.ScriptBlockId = scriptBlock.Id;
+# endif
             Tracer._previousHit.Extent = new ScriptExtentEventData
             {
                 File = extent.File,
@@ -159,7 +222,10 @@ namespace Profiler
 
         private static void SetSelfDurationAndAddToHits(ref ProfileEventRecord eventRecord, long timestamp)
         {
-            eventRecord.SelfDuration = TimeSpan.FromTicks(timestamp - eventRecord.Timestamp);
+            // timespan ticks are 10k per millisecond, but the stopwatch can have different resolution
+            // calculate the diff betwen the timestamps and convert it to 10k per ms ticks
+            var diffInTimespanTicks = (long)((timestamp - eventRecord.Timestamp) / _stopwatchDivider);
+            eventRecord.SelfDuration = TimeSpan.FromTicks(diffInTimespanTicks);
             Tracer.Hits.Add(eventRecord);
         }
     }
@@ -217,7 +283,6 @@ namespace Profiler
 
         public override void WriteDebugLine(string message)
         {
-
             // _ui.WriteDebugLine(message);
             Tracer.TraceLine();
         }
