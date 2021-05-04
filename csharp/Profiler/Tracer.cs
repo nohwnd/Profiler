@@ -20,7 +20,9 @@ namespace Profiler
         internal static int _index = 0;
         private static Action TraceLineAction;
         private static Action ResetUI;
-        private static double _stopwatchDivider = Stopwatch.Frequency / TimeSpan.TicksPerSecond;
+        // timespan ticks are 10k per millisecond, but the stopwatch can have different resolution
+        // calculate the diff betwen the timestamps and convert it to 10k per ms ticks
+        private static double _tickDivider = Stopwatch.Frequency / TimeSpan.TicksPerSecond;
 
         public static List<ProfileEventRecord> Hits { get; } = new List<ProfileEventRecord>();
         public static Dictionary<Guid, ScriptBlock> UnboundScriptBlocks { get; } = new Dictionary<Guid, ScriptBlock>();
@@ -167,7 +169,7 @@ namespace Profiler
 
         internal static void Trace(IScriptExtent extent, ScriptBlock scriptBlock, int level)
         {
-            var timestamp = Stopwatch.GetTimestamp();
+            var timestamp = (long) (Stopwatch.GetTimestamp() / _tickDivider);
             // we are using structs so we need to insert the final struct to the 
             // list instead of inserting it to the list, and keeping reference to modify it later
             // so when we are on second event (index 1) we modify the first (index 0) with the correct
@@ -222,10 +224,7 @@ namespace Profiler
 
         private static void SetSelfDurationAndAddToHits(ref ProfileEventRecord eventRecord, long timestamp)
         {
-            // timespan ticks are 10k per millisecond, but the stopwatch can have different resolution
-            // calculate the diff betwen the timestamps and convert it to 10k per ms ticks
-            var diffInTimespanTicks = (long)((timestamp - eventRecord.Timestamp) / _stopwatchDivider);
-            eventRecord.SelfDuration = TimeSpan.FromTicks(diffInTimespanTicks);
+            eventRecord.SelfDuration = TimeSpan.FromTicks(timestamp - eventRecord.Timestamp);
             Tracer.Hits.Add(eventRecord);
         }
     }
