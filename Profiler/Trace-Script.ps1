@@ -211,20 +211,10 @@ function Trace-Script {
         $lineNumber = $hit.Line
         if (-not $file.Lines.ContainsKey($lineNumber)) {
             $lineProfile = [Profiler.LineProfile] @{
-                # Percent      = 0
-                # HitCount     = 0 
-                # Duration     = [TimeSpan]::Zero
-                # Average      = [TimeSpan]::Zero
-                # SelfDuration = [TimeSpan]::Zero
-                # SelfAverage  = [TimeSpan]::Zero
-    
                 Name         = $file.Name
                 Line         = $lineNumber
                 Text         = $hit.Text
                 Path         = $key
-                # IsInFile     = $false # Not available in class
-                # Hits         = [System.Collections.Generic.List[Profiler.ProfileEventRecord]]::new()
-                # CommandHits  = New-Object 'System.Collections.Generic.Dictionary[Uint,Profiler.CommandHit]'
             }
             $file.Lines.Add($lineNumber, $lineProfile)
         }
@@ -348,13 +338,6 @@ function Trace-Script {
         StopwatchDuration = $out.Stopwatch
         AllLines          = $all
         Events            = $trace
-        # Files             = foreach ($pair in $fileMap.GetEnumerator()) {
-        #     [PSCustomObject]@{
-        #         Path = $pair.Key
-        #         Name = $pair.Value.Name
-        #         Lines = $pair.Value.Lines | Sort-Object -Property Name
-        #     }
-        # }
     }
 
     $script:processedTrace
