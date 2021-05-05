@@ -74,6 +74,7 @@ function Trace-ScriptInternal {
     }
 
     $out.Stopwatch = $result.Stopwatch
+    $out.ScriptBlocks = $result.ScriptBlocks
     $trace = $result.Trace
     Write-Host -Foreground Magenta "Tracing done. Got $($trace.Count) trace events."
     if ($UseNativePowerShell7Profiler) {
@@ -111,6 +112,7 @@ function Measure-ScriptHarmony ($ScriptBlock) {
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     try {
         # ensure all output to pipeline is dumped
+        $tracer = [Profiler.ProfilerTracer]::new()
         $null = & {
             try {
                 # use this as a marker of position, scriptblocks are aware of the current line, so we can use it to 
@@ -124,7 +126,7 @@ function Measure-ScriptHarmony ($ScriptBlock) {
                 # breakpoint in VSCode (or other editor)
                 $bp = Set-PSBreakpoint -Script $PSCommandPath -Line $here.StartPosition.StartLine -Action {}
                 $bp | Disable-PSBreakpoint
-                [Profiler.Tracer]::Patch($PSVersionTable.PSVersion.Major, $ExecutionContext, $host.UI)
+                [Profiler.Tracer]::Patch($PSVersionTable.PSVersion.Major, $ExecutionContext, $host.UI, $tracer)
                 Set-PSDebug -Trace 1
                 & $ScriptBlock
             } 
@@ -143,7 +145,8 @@ function Measure-ScriptHarmony ($ScriptBlock) {
     $sw.Stop()
 
     $result = @{
-        Trace = [Profiler.Tracer]::Hits
+        Trace = $tracer.Hits
+        ScriptBlocks = $tracer.ScriptBlocks
         Error = $err
         Stopwatch = $sw.Elapsed
     }
@@ -153,10 +156,15 @@ function Measure-ScriptHarmony ($ScriptBlock) {
     }
 
     $lastLine = $result.Trace[-1]
-
-    $disableCommand = "[Profiler.Tracer]::Unpatch()"
+    $disableCommand = '[Profiler.Tracer]::Unpatch()'
     if ($PSCommandPath -ne $lastLine.Path -or $disableCommand -ne $lastLine.Text) { 
         Write-Warning "Event list is incomplete, it should end with '$disableCommand' from within Profiler module, but instead ends with entry '$($lastLine.Text)', from '$($lastLine.Path)'. Are you disabling trace mode in your code using Set-PSDebug -Trace 0 or using Remove-PSBreakpoint?"
+    }
+
+    $firstLine = $result.Trace[0]
+    $enableCommand = '[Profiler.Tracer]::Patch($PSVersionTable.PSVersion.Major, $ExecutionContext, $host.UI, $tracer)'
+    if ($PSCommandPath -ne $firstLine.Path -or $enableCommand -ne $firstLine.Text) { 
+        Write-Warning "Event list is incomplete, it should start with '$enableCommand' from within Profiler module, but instead starts with entry '$($firstLine.Text)', from '$($firstLine.Path)'. Are you running profiler in the code you are profiling?"
     }
 
     $result

@@ -2,35 +2,31 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Linq;
 using System.Management.Automation;
 using System.Management.Automation.Host;
 using System.Management.Automation.Language;
 using System.Reflection;
 using System.Security;
-using System.Threading;
-using Debugger = System.Diagnostics.Debugger;
 using NonGeneric = System.Collections;
 
 namespace Profiler
 {
     public static class Tracer
     {
-        internal static ProfileEventRecord _previousHit;
-        internal static int _index = 0;
-        private static Action TraceLineAction;
+        private static Func<TraceLineInfo> GetTraceLineInfo;
         private static Action ResetUI;
-        // timespan ticks are 10k per millisecond, but the stopwatch can have different resolution
-        // calculate the diff betwen the timestamps and convert it to 10k per ms ticks
-        private static double _tickDivider = Stopwatch.Frequency / TimeSpan.TicksPerSecond;
+        private static ITracer _tracer;
 
-        public static List<ProfileEventRecord> Hits { get; } = new List<ProfileEventRecord>();
-        public static Dictionary<Guid, ScriptBlock> ScriptBlocks { get; } = new Dictionary<Guid, ScriptBlock>();
-        public static Dictionary<string, ScriptBlock> FileScriptBlocks { get; } = new Dictionary<string, ScriptBlock>();
-
-        public static void Patch(int version, EngineIntrinsics context, PSHostUserInterface ui)
+        public static ProfilerTracer Patch(int version, EngineIntrinsics context, PSHostUserInterface ui)
         {
-            Clear();
+            var tracer = new ProfilerTracer();
+            Patch(version, context, ui, tracer);
+            return tracer;
+        }
+
+        public static void Patch(int version, EngineIntrinsics context, PSHostUserInterface ui, ITracer tracer)
+        {
+            _tracer = tracer;
 
             var uiFieldName = version >= 7 ? "_externalUI" : "externalUI";
             // we get InternalHostUserInterface, grab external ui from that and replace it with ours
@@ -38,7 +34,7 @@ namespace Profiler
             var externalUI = (PSHostUserInterface)externalUIField.GetValue(ui);
 
             // replace it with out patched up UI that writes to profiler on debug
-            externalUIField.SetValue(ui, new ProfilerUI(externalUI));
+            externalUIField.SetValue(ui, new TracerHostUI(externalUI, TraceLine));
 
             ResetUI = () =>
             {
@@ -92,26 +88,18 @@ namespace Profiler
                 var scriptBlock1 = (ScriptBlock)scriptBlockField.GetValue(functionContext1);
                 var extent1 = (IScriptExtent)currentPositionProperty.GetValue(functionContext1);
 
-                TraceLineAction = () =>
+                GetTraceLineInfo = () =>
                 {
-                    try
-                    {
-                        var callStack = callStackField.GetValue(debugger);
-                        var callStackList = (NonGeneric.IList)callStack;
-                        var level = callStackList.Count - initialLevel;
-                        var last = callStackList[callStackList.Count - 1];
-                        var functionContext = functionContextProperty.GetValue(last);
+                    var callStack = callStackField.GetValue(debugger);
+                    var callStackList = (NonGeneric.IList)callStack;
+                    var level = callStackList.Count - initialLevel;
+                    var last = callStackList[callStackList.Count - 1];
+                    var functionContext = functionContextProperty.GetValue(last);
 
-                        var scriptBlock = (ScriptBlock)scriptBlockField.GetValue(functionContext);
-                        var extent = (IScriptExtent)currentPositionProperty.GetValue(functionContext);
+                    var scriptBlock = (ScriptBlock)scriptBlockField.GetValue(functionContext);
+                    var extent = (IScriptExtent)currentPositionProperty.GetValue(functionContext);
 
-                        Trace(extent, scriptBlock, level);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(ex);
-                        Console.WriteLine(ex.StackTrace);
-                    }
+                    return new TraceLineInfo(extent, scriptBlock, level);
                 };
             }
             else
@@ -126,7 +114,7 @@ namespace Profiler
                 var scriptBlock1 = (ScriptBlock)scriptBlockField.GetValue(functionContext1);
                 var extent1 = (IScriptExtent)currentPositionProperty.GetValue(functionContext1);
 
-                TraceLineAction = () =>
+                GetTraceLineInfo = () =>
                 {
                     var callStack = callStackField.GetValue(debugger);
                     var level = (int)getCount.Invoke(callStack, empty) - initialLevel;
@@ -134,108 +122,50 @@ namespace Profiler
                     var scriptBlock = (ScriptBlock)scriptBlockField.GetValue(functionContext);
                     var extent = (IScriptExtent)currentPositionProperty.GetValue(functionContext);
 
-                    Trace(extent, scriptBlock, level);
+                    return new TraceLineInfo(extent, scriptBlock, level);
                 };
             }
 
             // Add another event to the top apart from the scriptblock invocation
             // in Trace-ScriptInternal, this makes it more consistently work on first
             // run. Without this, the triggering line sometimes does not show up as 99.9%
-            TraceLineAction();
-        }
-
-        public static void Clear()
-        {
-            Hits.Clear();
-            ScriptBlocks.Clear();
-            FileScriptBlocks.Clear();
-            _index = 0;
-            _previousHit = default;
+            TraceLine();
         }
 
         public static void Unpatch()
         {
             // Add Set-PSDebug -Trace 0 event and also another one for the internal disable
             // this make first run more consistent for some reason
-            TraceLineAction();
-            TraceLineAction();
+            TraceLine();
+            TraceLine();
             ResetUI();
+            _tracer = null;
         }
 
+        // keeping this public so I can write easier repros when something goes wrong, 
+        // in that case we just need to patch, trace and unpatch and if that works then 
+        // maybe the UI host does not work
         public static void TraceLine()
         {
-            TraceLineAction();
-        }
-
-        internal static void Trace(IScriptExtent extent, ScriptBlock scriptBlock, int level)
-        {
-            var timestamp = (long) (Stopwatch.GetTimestamp() / _tickDivider);
-            // we are using structs so we need to insert the final struct to the 
-            // list instead of inserting it to the list, and keeping reference to modify it later
-            // so when we are on second event (index 1) we modify the first (index 0) with the correct
-            // SelfDuration (start of index 0 until start of index 1 = SelfDuration of index 0) and then add it to 
-            // the final list
-            // We need to do the same when unpatching to get the last event
-            if (_index > 0)
-            {
-                SetSelfDurationAndAddToHits(ref _previousHit, timestamp);
-            }
-
-
-#if !POWERSHELL3
-            if (!ScriptBlocks.ContainsKey(scriptBlock.Id))
-            {
-                ScriptBlocks.Add(scriptBlock.Id, scriptBlock);
-            }
-#else
-            if (!string.IsNullOrEmpty(scriptBlock.File))
-            {
-                var key = $"{scriptBlock.File}:{scriptBlock.StartPosition.StartLine}:{scriptBlock.StartPosition.StartColumn}";
-                if (!FileScriptBlocks.ContainsKey(scriptBlock.File))
-                {
-                    FileScriptBlocks.Add(scriptBlock.File, scriptBlock);
-                }
-      }          
-#endif
-
-            // overwrite the previous event because we already scraped it
-            Tracer._previousHit = new ProfileEventRecord();
-            Tracer._previousHit.StartTime = TimeSpan.FromTicks(timestamp);
-            Tracer._previousHit.Index = _index;
-            Tracer._previousHit.IsInFile = !string.IsNullOrWhiteSpace(extent.File);
-# if !POWERSHELL3
-            Tracer._previousHit.ScriptBlockId = scriptBlock.Id;
-# endif
-            Tracer._previousHit.Extent = new ScriptExtentEventData
-            {
-                File = extent.File,
-                StartLineNumber = extent.StartLineNumber,
-                StartColumnNumber = extent.StartColumnNumber,
-                EndLineNumber = extent.EndLineNumber,
-                EndColumnNumber = extent.EndColumnNumber,
-                Text = extent.Text,
-                StartOffset = extent.StartOffset,
-                EndOffset = extent.EndOffset,
-            };
-            Tracer._previousHit.Level = level;
-
-            _index++;
-        }
-
-        private static void SetSelfDurationAndAddToHits(ref ProfileEventRecord eventRecord, long timestamp)
-        {
-            eventRecord.SelfDuration = TimeSpan.FromTicks(timestamp - eventRecord.Timestamp);
-            Tracer.Hits.Add(eventRecord);
+            var traceLineInfo = GetTraceLineInfo();
+            _tracer.Trace(traceLineInfo);
         }
     }
 
-    internal class ProfilerUI : PSHostUserInterface
+    public interface ITracer
+    {
+        void Trace(TraceLineInfo traceLineInfo);
+    }
+
+    internal class TracerHostUI : PSHostUserInterface
     {
         private PSHostUserInterface _ui;
+        private Action _trace;
 
-        public ProfilerUI(PSHostUserInterface ui)
+        public TracerHostUI(PSHostUserInterface ui, Action trace)
         {
             _ui = ui;
+            _trace = trace;
         }
 
         public override PSHostRawUserInterface RawUI => _ui.RawUI;
@@ -282,8 +212,10 @@ namespace Profiler
 
         public override void WriteDebugLine(string message)
         {
-            // _ui.WriteDebugLine(message);
-            Tracer.TraceLine();
+            if (_trace == null)
+                _ui.WriteDebugLine(message);
+
+            _trace();
         }
 
         public override void WriteErrorLine(string value)
@@ -312,28 +244,95 @@ namespace Profiler
         }
     }
 
-    internal static class Dbg
+    public struct TraceLineInfo
     {
-        static bool _triggered = false;
+        public IScriptExtent Extent;
+        public ScriptBlock ScriptBlock;
+        public int Level;
 
-        public static void WaitForDebugger()
+        public TraceLineInfo(IScriptExtent extent, ScriptBlock scriptBlock, int level)
         {
-            if (_triggered)
-                return;
+            Extent = extent;
+            ScriptBlock = scriptBlock;
+            Level = level;
+        }
+    }
 
-            var debug = Environment.GetEnvironmentVariable("PROFILER_DEBUG")?.ToLowerInvariant();
-            if (!new[] { "on", "yes", "true", "1" }.Contains(debug))
-                return;
+    public class ProfilerTracer : ITracer
+    {
+        // timespan ticks are 10k per millisecond, but the stopwatch can have different resolution
+        // calculate the diff betwen the timestamps and convert it to 10k per ms ticks
+        private static double _tickDivider = Stopwatch.Frequency / TimeSpan.TicksPerSecond;
+        internal int _index = 0;
+        internal ProfileEventRecord _previousHit;
 
-            while (!Debugger.IsAttached)
+        public List<ProfileEventRecord> Hits { get; } = new List<ProfileEventRecord>();
+        public Dictionary<Guid, ScriptBlock> ScriptBlocks { get; } = new Dictionary<Guid, ScriptBlock>();
+        public Dictionary<string, ScriptBlock> FileScriptBlocks { get; } = new Dictionary<string, ScriptBlock>();
+
+        public void Trace(TraceLineInfo traceLineInfo)
+        {
+            var scriptBlock = traceLineInfo.ScriptBlock;
+            var extent = traceLineInfo.Extent;
+            var level = traceLineInfo.Level;
+
+            var timestamp = (long)(Stopwatch.GetTimestamp() / _tickDivider);
+            // we are using structs so we need to insert the final struct to the 
+            // list instead of inserting it to the list, and keeping reference to modify it later
+            // so when we are on second event (index 1) we modify the first (index 0) with the correct
+            // SelfDuration (start of index 0 until start of index 1 = SelfDuration of index 0) and then add it to 
+            // the final list
+            // We need to do the same when unpatching to get the last event
+            if (_index > 0)
             {
-                var process = Process.GetCurrentProcess();
-                Console.WriteLine($"Waiting for debugger {process.Id} - {process.ProcessName}");
-                Thread.Sleep(1000);
+                SetSelfDurationAndAddToHits(ref _previousHit, timestamp);
             }
 
-            _triggered = true;
-            Debugger.Break();
+
+#if !POWERSHELL3
+            if (!ScriptBlocks.ContainsKey(scriptBlock.Id))
+            {
+                ScriptBlocks.Add(scriptBlock.Id, scriptBlock);
+            }
+#else
+            if (!string.IsNullOrEmpty(scriptBlock.File))
+            {
+                var key = $"{scriptBlock.File}:{scriptBlock.StartPosition.StartLine}:{scriptBlock.StartPosition.StartColumn}";
+                if (!FileScriptBlocks.ContainsKey(scriptBlock.File))
+                {
+                    FileScriptBlocks.Add(scriptBlock.File, scriptBlock);
+                }
+      }          
+#endif
+
+            // overwrite the previous event because we already scraped it
+            _previousHit = new ProfileEventRecord();
+            _previousHit.StartTime = TimeSpan.FromTicks(timestamp);
+            _previousHit.Index = _index;
+            _previousHit.IsInFile = !string.IsNullOrWhiteSpace(extent.File);
+# if !POWERSHELL3
+            _previousHit.ScriptBlockId = scriptBlock.Id;
+# endif
+            _previousHit.Extent = new ScriptExtentEventData
+            {
+                File = extent.File,
+                StartLineNumber = extent.StartLineNumber,
+                StartColumnNumber = extent.StartColumnNumber,
+                EndLineNumber = extent.EndLineNumber,
+                EndColumnNumber = extent.EndColumnNumber,
+                Text = extent.Text,
+                StartOffset = extent.StartOffset,
+                EndOffset = extent.EndOffset,
+            };
+            _previousHit.Level = level;
+
+            _index++;
+        }
+
+        private void SetSelfDurationAndAddToHits(ref ProfileEventRecord eventRecord, long timestamp)
+        {
+            eventRecord.SelfDuration = TimeSpan.FromTicks(timestamp - eventRecord.Timestamp);
+            Hits.Add(eventRecord);
         }
     }
 }

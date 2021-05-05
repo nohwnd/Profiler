@@ -118,9 +118,10 @@ function Trace-Script {
 
     $invokedAs = $MyInvocation.Line
 
-    $out = @{ Stopwatch = [TimeSpan]::Zero }
+    $out = @{ Stopwatch = [TimeSpan]::Zero; ScriptBlocks = $null }
     $trace = Trace-ScriptInternal -ScriptBlock $ScriptBlock -Preheat $Preheat -DisableWarning:$DisableWarning -Flag $Flag -UseNativePowerShell7Profiler:$UseNativePowerShell7Profiler -Before:$Before -Out $out
 
+    $scriptBlocks = $out.ScriptBlocks
     $traceCount = $trace.Count
 
     Write-Host -ForegroundColor Magenta "Processing $($traceCount) trace events. $(if (1000000 -lt $traceCount) { "This might take a while..."})"
@@ -199,12 +200,12 @@ function Trace-Script {
     foreach ($hit in $trace[2..($traceCount-3)]) {
         $key = $hit.ScriptBlockId
         if (-not $contentMap.ContainsKey($key)) {
-            $content = [Profiler.Tracer]::ScriptBlocks[$key]
+            $content = $scriptBlocks[$key]
             $lines = $content -split "`n"
             $contentMap.Add($key, $lines)
         }
 
-        $scriptBlock = [Profiler.Tracer]::ScriptBlocks[$key]
+        $scriptBlock = $scriptBlocks[$key]
         $lines = $contentMap[$key]
         $line = $lines[$hit.Line-$ScriptBlock.StartPosition.StartLine]
 
