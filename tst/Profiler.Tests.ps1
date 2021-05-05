@@ -69,10 +69,13 @@ Describe "Should-Take" {
     }
 }
 
-Describe "Trace-Script" { 
+Describe "Trace-Script" {
     It "Can profile a scriptblock" { 
         $trace = Trace-Script { Start-Sleep -Milliseconds 100 }
-        $trace.TotalDuration | Should-Take $trace.StopwatchDuration -OrLessBy 25ms
+
+        # first test gets perf hit, with just 25ms it fails almost all the time 
+        # on timing issues in our CI
+        $trace.TotalDuration | Should-Take $trace.StopwatchDuration -OrLessBy 50ms
     }
 
     It "Can profile an unbound scriptblock" { 
