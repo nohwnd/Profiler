@@ -69,9 +69,20 @@ Describe "Should-Take" {
     }
 }
 
-Describe "Trace-Script" { 
+Describe "Trace-Script" {
+    It "Can profile a scriptblock (heats up our module)" { 
+        $trace = Trace-Script { Start-Sleep -Milliseconds 100 }
+
+        # first test gets perf hit, don't do any timing here, it will be off
+        # and will fail the test
+        $trace | Should -Not -BeNullOrEmpty
+    }
+
     It "Can profile a scriptblock" { 
         $trace = Trace-Script { Start-Sleep -Milliseconds 100 }
+
+        # first test gets perf hit, with just 25ms it fails almost all the time 
+        # on timing issues in our CI
         $trace.TotalDuration | Should-Take $trace.StopwatchDuration -OrLessBy 25ms
     }
 

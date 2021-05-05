@@ -2,11 +2,11 @@
 
 namespace Profiler
 {
-
     /// <summary>
     /// Measure-ScriptBlock output type.
     /// </summary>
-    public struct ProfileEventRecord
+    public struct Hit
+
     {
         /// <summary>
         /// StartTime of event.
@@ -27,7 +27,7 @@ namespace Profiler
         /// <summary>
         /// Script Extent.
         /// </summary>
-        public ScriptExtentEventData Extent;
+        public ScriptExtent Extent;
 
         /// <summary>
         /// Unique identifer of the runspace.
@@ -62,18 +62,11 @@ namespace Profiler
 
         public int Level;
 
-        public CallReturnProcess Flow;
+        public Flow Flow;
 
         // where we returned if we are a call, otherwise our own index
         public int ReturnIndex;
         // who called us
         public int CallerIndex;
-    }
-
-    public enum CallReturnProcess
-    {
-        Call = 0,
-        Return,
-        Process
     }
 }

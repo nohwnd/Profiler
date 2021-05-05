@@ -8,14 +8,14 @@ namespace Profiler
     /// </summary>
     public class Trace
     {
-        public Profiler.LineProfile[] Top50Duration { get; set; }
-        public Profiler.LineProfile[] Top50Average { get; set; }
-        public Profiler.LineProfile[] Top50HitCount { get; set; }
-        public Profiler.LineProfile[] Top50SelfDuration { get; set; }
-        public Profiler.LineProfile[] Top50SelfAverage { get; set; }
+        public LineProfile[] Top50Duration { get; set; }
+        public LineProfile[] Top50Average { get; set; }
+        public LineProfile[] Top50HitCount { get; set; }
+        public LineProfile[] Top50SelfDuration { get; set; }
+        public LineProfile[] Top50SelfAverage { get; set; }
         public TimeSpan TotalDuration { get; set; }
         public TimeSpan StopwatchDuration { get; set; }
-        public Profiler.LineProfile[] AllLines { get; set; }
-        public List<ProfileEventRecord> Events { get; set; }
+        public LineProfile[] AllLines { get; set; }
+        public List<Hit> Events { get; set; }
     }
 }
