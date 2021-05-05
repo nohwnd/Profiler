@@ -17,18 +17,24 @@ stages:
           clean: all
         strategy:
           matrix:
-            PS7_macOS_10_15_Catalina:
-              vmImage: macOS-10.15
+            PS7_Windows_Server2016:
+              vmImage: vs2017-win2016
               pwsh: true
+            PS_5_1_Windows_Server2016:
+              vmImage: vs2017-win2016
+              pwsh: false
             PS7_Windows_Server2019:
               vmImage: windows-2019
-              pwsh: true
-            PS7_Ubuntu_18_04:
-              vmImage: ubuntu-18.04
               pwsh: true
             PS_5_1_Windows_Server2019:
               vmImage: windows-2019
               pwsh: false
+            PS7_Ubuntu_18_04:
+              vmImage: ubuntu-18.04
+              pwsh: true
+            PS7_macOS_10_15_Catalina:
+              vmImage: macOS-10.15
+              pwsh: true
         pool:
           vmImage: $[ variables['vmImage'] ]
         steps:

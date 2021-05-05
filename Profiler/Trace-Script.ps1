@@ -140,14 +140,14 @@ function Trace-Script {
             # the next event has higher number on the callstack
             # we are going down into a function, meaning this is a call
             if ($nextEvent.Level -gt $hit.Level) {
-                $hit.Flow = [Profiler.CallReturnProcess]::Call
+                $hit.Flow = [Profiler.Flow]::Call
                 # save where we entered
                 $stack.Push($hit.Index)
                 $hit.CallerIndex = $caller
                 $caller = $hit.Index
             }
             elseif ($nextEvent.Level -lt $hit.Level) {
-                $hit.Flow = [Profiler.CallReturnProcess]::Return
+                $hit.Flow = [Profiler.Flow]::Return
                 # we go up, back from a function and we might jump up
                 # for example when throw happens and we end up in try catch
                 # that is x levels up
@@ -178,7 +178,7 @@ function Trace-Script {
                 # we stay in the function in the next step, so we did
                 # not call anyone or did not return, we are just processing
                 # the duration is the selfduration
-                $hit.Flow = [Profiler.CallReturnProcess]::Process
+                $hit.Flow = [Profiler.Flow]::Process
                 $hit.Duration = $hit.SelfDuration
                 $hit.ReturnIndex = $hit.Index
 
@@ -335,18 +335,25 @@ function Trace-Script {
     Sort-Object -Property HitCount -Descending |
     Select-Object -First 50
 
-
-    $script:processedTrace = [Profiler.Trace] @{
-        Top50Duration     = $top50Duration
-        Top50Average      = $top50Average
-        Top50HitCount     = $top50HitCount
-        Top50SelfDuration = $top50SelfDuration
-        Top50SelfAverage  = $top50SelfAverage
-        TotalDuration     = $total
-        StopwatchDuration = $out.Stopwatch
-        AllLines          = $all
-        Events            = $trace
-    }
+    # do not use object initializer syntax here @{}
+    # when it fails it will not create any object
+    # and won't tell you on which line exactly it failed
+    #
+    # order properties based on what is least likely to
+    # fail on casting
+    #
+    # this way we can get the partial object out for 
+    # debugging when this fails on someones system
+    $script:processedTrace = [Profiler.Trace]::new()
+    $script:processedTrace.TotalDuration     = $total
+    $script:processedTrace.StopwatchDuration = $out.Stopwatch
+    $script:processedTrace.Events            = $trace
+    $script:processedTrace.AllLines          = $all
+    $script:processedTrace.Top50Duration     = $top50Duration
+    $script:processedTrace.Top50Average      = $top50Average
+    $script:processedTrace.Top50HitCount     = $top50HitCount
+    $script:processedTrace.Top50SelfDuration = $top50SelfDuration
+    $script:processedTrace.Top50SelfAverage  = $top50SelfAverage
 
     $script:processedTrace
 
@@ -494,7 +501,7 @@ function Get-CallStack {
 
     param (
         [Parameter(Mandatory)]
-        [Profiler.ProfileEventRecord] $hit
+        [Profiler.Hit] $hit
     )
 
     $trace = (Get-LatestTrace).Events

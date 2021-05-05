@@ -32,7 +32,7 @@ namespace Profiler
         /// </summary>
         public string Text { get; set; }
 
-        public CommandHit(ProfileEventRecord hit)
+        public CommandHit(Hit hit)
         {
             Line         = (uint)hit.Line;
             Column       = (uint)hit.Column;
