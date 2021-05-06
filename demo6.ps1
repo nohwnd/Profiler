@@ -18,9 +18,6 @@ $sb = {
     Start-Sleep 1
 }
 
-
-Import-Module $PSScriptRoot/Profiler/Profiler.psm1 -Force
-
 $trace = Trace-Script { & $sb } -Preheat 0
 
 $trace.Top50Duration | Format-Table
