@@ -16,6 +16,8 @@ namespace Profiler
 
         public static bool IsEnabled { get; private set; }
 
+        public static bool HasTracer2 => _tracer2 != null;
+
         public static ProfilerTracer Patch(int version, EngineIntrinsics context, PSHostUserInterface ui)
         {
             var tracer = new ProfilerTracer();
@@ -26,12 +28,12 @@ namespace Profiler
         public static void Register(ITracer tracer)
         {
             if (!IsEnabled)
-                throw new InvalidOperationException("Tracer is not active, if you want to activate it call Patch.");
+                throw new InvalidOperationException($"Tracer is not active, if you want to activate it call {nameof(Patch)}.");
 
-            if (_tracer2 != null)
+            if (HasTracer2)
                 throw new InvalidOperationException("Tracer2 is already present.");
 
-            _tracer2 = tracer;
+            _tracer2 = tracer ?? throw new ArgumentNullException(nameof(tracer));
             TraceLine(justTracer2: true);
         }
 
@@ -40,6 +42,8 @@ namespace Profiler
             if (!IsEnabled)
                 throw new InvalidOperationException("Tracer is not active.");
 
+            if (!HasTracer2)
+                throw new InvalidOperationException("Tracer2 is not present.");
 
             TraceLine(justTracer2: true);
             TraceLine(justTracer2: true);
@@ -49,9 +53,9 @@ namespace Profiler
         public static void Patch(int version, EngineIntrinsics context, PSHostUserInterface ui, ITracer tracer)
         {
             if (IsEnabled)
-                throw new InvalidOperationException("Tracer is already active, if you want to add another tracer call Register.");
+                throw new InvalidOperationException($"Tracer is already active, if you want to add another tracer call {nameof(Register)}.");
 
-            _tracer = tracer;
+            _tracer = tracer ?? throw new ArgumentNullException(nameof(tracer));
 
             var uiFieldName = version >= 7 ? "_externalUI" : "externalUI";
             // we get InternalHostUserInterface, grab external ui from that and replace it with ours

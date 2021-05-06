@@ -111,51 +111,61 @@ function Trace-ScriptInternal {
 function Measure-ScriptHarmony ($ScriptBlock) {
     
     $tracer = [Profiler.ProfilerTracer]::new()
-    $isEnabled = [Profiler.Tracer]::IsEnabled
+
+    if (-not [Profiler.Tracer]::IsEnabled) {
+        # use this as a marker of position, scriptblocks are aware of the current line, so we can use it to 
+        # make this code not rely on exact line numbers
+        $here = {}
+        # add a dummy breakpoint and disable it, otherwise when someone calls Remove-PSBreakpoint and there are 
+        # no breakpoints left the debugger will disable itself. This could also be solved by adding global function
+        # that is generated as a proxy for Remove-PSBreakpoint and re-enables Set-PSDebug -Trace 1. That would 
+        # be more resilient to users who can remove all breakpoints including ours. But we would have to generate it
+        # and modify the code, and it would look weird in their code output. On the other hand we would not show up extra 
+        # breakpoint in VSCode (or other editor)
+        $bp = Set-PSBreakpoint -Script $PSCommandPath -Line $here.StartPosition.StartLine -Action {}
+        $null = $bp | Disable-PSBreakpoint
+    }
+
+    $sw = [System.Diagnostics.Stopwatch]::new()
     try {
-        if (-not $isEnabled) {
-            # use this as a marker of position, scriptblocks are aware of the current line, so we can use it to 
-            # make this code not rely on exact line numbers
-            $here = {}
-            # add a dummy breakpoint and disable it, otherwise when someone calls Remove-PSBreakpoint and there are 
-            # no breakpoints left the debugger will disable itself. This could also be solved by adding global function
-            # that is generated as a proxy for Remove-PSBreakpoint and re-enables Set-PSDebug -Trace 1. That would 
-            # be more resilient to users who can remove all breakpoints including ours. But we would have to generate it
-            # and modify the code, and it would look weird in their code output. On the other hand we would not show up extra 
-            # breakpoint in VSCode (or other editor)
-            $bp = Set-PSBreakpoint -Script $PSCommandPath -Line $here.StartPosition.StartLine -Action {}
-            $null = $bp | Disable-PSBreakpoint
-        }
-        $sw = [System.Diagnostics.Stopwatch]::new()
         try {
-            if (-not $isEnabled) {
+            if (-not [Profiler.Tracer]::IsEnabled) {
                 $null = [Profiler.Tracer]::Patch($PSVersionTable.PSVersion.Major, $ExecutionContext, $host.UI, $tracer)
+            }
+            else { 
+                # just add second tracer to the existing setup
+                $null = [Profiler.Tracer]::Register($tracer)
+            }
+
+            $sw.Start();
+            $null = Set-PSDebug -Trace 1
+            $null = & $ScriptBlock
+        }
+        finally { 
+            # disable tracing in any case because we don't want too many internal 
+            # details to leak into the log, otherwise any change in this code will 
+            # reflect into the log and we need to change counts in Profiler
+            $null = Set-PSDebug -Trace 0
+            $sw.Stop()
+            if ([Profiler.Tracer]::HasTracer2) {
+                $null = [Profiler.Tracer]::Unregister()
+                # re-enable tracing because tracer 1 still needs to continue tracing
                 $null = Set-PSDebug -Trace 1
             }
             else { 
-                $null = [Profiler.Tracer]::Register($tracer)
-            }
-            $sw.Start();
-            $null = & $ScriptBlock
-        } 
-        catch {
-            $err = $_
-        }
-        $sw.Stop()
-    }
-    finally {
-        if (-not $isEnabled) {
-            $null = Set-PSDebug -Trace 0
-            $null = [Profiler.Tracer]::Unpatch()
-            
-            if ($bp) { 
-                $null = $bp | Remove-PSBreakPoint
+                $null = [Profiler.Tracer]::Unpatch()
+
+                if ($bp) { 
+                    $null = $bp | Remove-PSBreakPoint
+                }
             }
         }
-        else {
-            $null = [Profiler.Tracer]::Unregister()
-        }
+    } 
+    catch {
+        $err = $_
     }
+
+
 
     $result = @{
         Trace        = $tracer.Hits
