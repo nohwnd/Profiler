@@ -226,7 +226,7 @@ function Trace-Script {
                 Name         = $file.Name
                 Line         = $lineNumber
                 # use the whole line we get from scriptblock, but if it is empty, there is open or close curly so print that
-                Text         = if ([string]::IsNullOrEmpty($line.Trim())) { $hit.Text.Trim() } else { $line.Trim() }
+                Text         = if ([string]::IsNullOrWhiteSpace($line)) { $hit.Text.Trim() } else { $line.Trim() }
                 Path         = $file.Path
             }
             $file.Lines.Add($lineNumber, $lineProfile)
