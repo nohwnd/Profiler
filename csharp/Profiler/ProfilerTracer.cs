@@ -22,8 +22,9 @@ namespace Profiler
             var scriptBlock = traceLineInfo.ScriptBlock;
             var extent = traceLineInfo.Extent;
             var level = traceLineInfo.Level;
-
+            var tsRaw = Stopwatch.GetTimestamp();
             var timestamp = (long)(Stopwatch.GetTimestamp() / _tickDivider);
+            Console.WriteLine($"rawTs: {tsRaw}, 10kTickTs: {timestamp}, divider: {_tickDivider}, fq: {Stopwatch.Frequency}, tps: {TimeSpan.TicksPerSecond}, dividerNonStatic: {Stopwatch.Frequency/ TimeSpan.TicksPerSecond}");
             // we are using structs so we need to insert the final struct to the 
             // list instead of inserting it to the list, and keeping reference to modify it later
             // so when we are on second event (index 1) we modify the first (index 0) with the correct
