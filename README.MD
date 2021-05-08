@@ -78,9 +78,9 @@ Running profiling multiple times in a row keeps the previous times to show you y
 Original prototype of this module is demoed [here on Youtube](https://www.youtube.com/watch?v=qLjDjm-nvLQ) The commands were renamed, but the way you can work with the resulting trace remained the same.
 
 
-## Knows limitations:
+## Know limitations:
 
-This module is under heavy development. Here are some limitations of my current desing that I know how to fix, I just did not have time to do it yet:
+This module is under heavy development. Here are some limitations of my current desing that I know how to fix, but that are not high on priority list:
 
 - Using Set-PSDebug -Off, or Set-PSDebug -Trace 0 stops the tracing, because that is what we internally use to enable and disable it. If this is a must for you let me know in issues.
 
