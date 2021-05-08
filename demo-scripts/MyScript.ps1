@@ -1,4 +1,4 @@
-$upperLimit = 10000
+$upperLimit = 10
 if ($_profiler) {
     $values = [System.Linq.Enumerable]::Range(1, $upperLimit)
 }

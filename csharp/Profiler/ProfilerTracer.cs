@@ -9,7 +9,7 @@ namespace Profiler
     {
         // timespan ticks are 10k per millisecond, but the stopwatch can have different resolution
         // calculate the diff betwen the timestamps and convert it to 10k per ms ticks
-        private static double _tickDivider = Stopwatch.Frequency / TimeSpan.TicksPerSecond;
+        private static double _tickDivider = ((double) Stopwatch.Frequency) / TimeSpan.TicksPerSecond;
         internal int _index = 0;
         internal Hit _previousHit;
 
@@ -24,7 +24,7 @@ namespace Profiler
             var level = traceLineInfo.Level;
             var tsRaw = Stopwatch.GetTimestamp();
             var timestamp = (long)(Stopwatch.GetTimestamp() / _tickDivider);
-            Console.WriteLine($"rawTs: {tsRaw}, 10kTickTs: {timestamp}, divider: {_tickDivider}, fq: {Stopwatch.Frequency}, tps: {TimeSpan.TicksPerSecond}, dividerNonStatic: {Stopwatch.Frequency/ TimeSpan.TicksPerSecond}");
+            Console.WriteLine($"rawTs: {tsRaw}, 10kTickTs: {timestamp}, divider: {_tickDivider}, fq: {Stopwatch.Frequency}, tps: {TimeSpan.TicksPerSecond}, dividerNonStatic: {((double) Stopwatch.Frequency) / TimeSpan.TicksPerSecond}");
             // we are using structs so we need to insert the final struct to the 
             // list instead of inserting it to the list, and keeping reference to modify it later
             // so when we are on second event (index 1) we modify the first (index 0) with the correct
