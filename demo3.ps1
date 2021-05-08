@@ -18,7 +18,7 @@ c
 Import-Module $PSScriptRoot/Profiler/Profiler.psm1 -Force
 
 # Runs the script
-$trace = Trace-Script { & "demo-scripts/SleepyScript.ps1" }
+$trace = Trace-Script { & "$PSScriptRoot/demo-scripts/SleepyScript.ps1" }
 
 $trace.Top50Duration | Format-Table
 
