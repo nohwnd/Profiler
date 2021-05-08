@@ -14,6 +14,7 @@ if ($_profiler) {
 else {
     # before changes
     Write-Host "before"
+    $newValues = @()
     $Values | foreach {
         $newValues += $_ + 10
     }
