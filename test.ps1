@@ -1,4 +1,4 @@
-param ([Switch] $Clean, $PesterPath) 
+param ([Switch] $Clean) 
 if ($Clean) {
     & "$PSScriptRoot/build.ps1"
 }
@@ -16,10 +16,11 @@ else {
     }
 }
 
-if ($PesterPath) { 
-    Write-Host "Using Pester from: $PesterPath"
+$devPesterPath = "/p/pester/bin/Pester.psd1"
+if (Test-Path $devPesterPath) { 
+    Write-Host "Using Pester from: $devPesterPath"
     Get-Module Pester | Remove-Module
-    Import-Module $PesterPath
+    Import-Module $devPesterPath
 }
 else {
     if (-not (Get-Module Pester -List | Where-Object Version -GE 5.2.0)) {
