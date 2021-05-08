@@ -39,6 +39,27 @@ stages:
           vmImage: $[ variables['vmImage'] ]
         steps:
           - task: PowerShell@2
+            displayName: 'Get short hash'
+            inputs:
+              targetType: inline
+              pwsh: $(pwsh)
+              script: |
+                $shortHash = $env:BUILD_SOURCEVERSION.subString(0, 7)
+                Write-Host "##vso[task.setvariable variable=shortHash]$shortHash"
+          - task: PowerShell@2
+            displayName: 'Build Profiler'
+            inputs:
+              targetType: inline
+              pwsh: $(pwsh)
+              script: |
+                & ./build.ps1
+              workingDirectory: '$(Build.SourcesDirectory)'
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(Build.SourcesDirectory)/Profiler'
+              artifact: 'Profiler-$(shortHash)'
+              publishLocation: 'pipeline'
+          - task: PowerShell@2
             displayName: 'Test Profiler'
             inputs:
               targetType: inline
@@ -46,6 +67,7 @@ stages:
               script: |
                 & ./test.ps1 -Clean
               workingDirectory: '$(Build.SourcesDirectory)'
+          
           # - task: PublishCodeCoverageResults@1
           #   inputs:
           #     codeCoverageTool: 'JaCoCo'
