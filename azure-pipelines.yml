@@ -10,6 +10,39 @@ variables:
   CI: 1
 
 stages:
+  # build and publish so we have artifacts even for builds that don't pass tests
+  # the main purpose of this is to share built version with others to test changes
+  # without setting up build environment
+  - stage: Build
+    displayName: "Build and Publish"
+    jobs:
+      - job:
+        workspace:
+          clean: all
+        pool:
+          vmImage: windows-2019
+        steps:
+          - task: PowerShell@2
+            displayName: 'Build Profiler'
+            inputs:
+              targetType: inline
+              pwsh: true
+              script: |
+                & ./build.ps1
+              workingDirectory: '$(Build.SourcesDirectory)'
+          - task: PowerShell@2
+            displayName: 'Get Short Hash'
+            inputs:
+              targetType: inline
+              pwsh: true
+              script: |
+                $shortHash = $env:BUILD_SOURCEVERSION.subString(0, 7)
+                Write-Host "##vso[task.setvariable variable=shortHash]$shortHash"
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(Build.SourcesDirectory)/Profiler'
+              artifact: 'Profiler-$(Build.SourceBranchName)-$(shortHash)'
+              publishLocation: 'pipeline'
   - stage: Test
     jobs:
       - job:
@@ -46,6 +79,7 @@ stages:
               script: |
                 & ./test.ps1 -Clean
               workingDirectory: '$(Build.SourcesDirectory)'
+          
           # - task: PublishCodeCoverageResults@1
           #   inputs:
           #     codeCoverageTool: 'JaCoCo'

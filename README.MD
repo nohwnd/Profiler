@@ -78,14 +78,16 @@ Running profiling multiple times in a row keeps the previous times to show you y
 Original prototype of this module is demoed [here on Youtube](https://www.youtube.com/watch?v=qLjDjm-nvLQ) The commands were renamed, but the way you can work with the resulting trace remained the same.
 
 
-## Knows issues:
+## Know limitations:
 
-This module is under heavy development, it should stabilize soon because I will start writing tests. Here are some limitations of my current desing that I know how to fix, I just did not have time to do it yet:
+This module is under heavy development. Here are some limitations of my current desing that I know how to fix, but that are not high on priority list:
 
-- Files that are detected but don't exist anymore are skipped during the trace processing.
-- This includes unsaved files in VSCode.
-- Unbound scriptblocks cause null reference exceptions in the trace processing. 
-- Lines of internal code from the module may appear in the overview of the execution.
+- Using Set-PSDebug -Off, or Set-PSDebug -Trace 0 stops the tracing, because that is what we internally use to enable and disable it. If this is a must for you let me know in issues.
+
+- Removing all breakpoints from the current session stops tracing. We add a synthetic breakpoint to prevent this, but if your code needs to remove all breakpoints, including the ones that are not "your own" let me know in issues.
+
+
+
 
 
 

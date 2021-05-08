@@ -443,8 +443,3 @@ $RECYCLE.BIN/
 
 pwsh7-nohwnd
 
-# commit the built dlls so anyone cloning this repo can use it 
-# without building it, useful for getting unreleased bits tested
-# by other people on their systems
-!Profiler/bin/
-!Profiler/bin/**/*.pdb

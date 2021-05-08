@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Management.Automation;
 using System.Management.Automation.Host;
 using System.Management.Automation.Language;
 using System.Reflection;
-using System.Security;
 using NonGeneric = System.Collections;
 
 namespace Profiler
@@ -16,6 +12,11 @@ namespace Profiler
         private static Func<TraceLineInfo> GetTraceLineInfo;
         private static Action ResetUI;
         private static ITracer _tracer;
+        private static ITracer _tracer2;
+
+        public static bool IsEnabled { get; private set; }
+
+        public static bool HasTracer2 => _tracer2 != null;
 
         public static ProfilerTracer Patch(int version, EngineIntrinsics context, PSHostUserInterface ui)
         {
@@ -24,9 +25,37 @@ namespace Profiler
             return tracer;
         }
 
+        public static void Register(ITracer tracer)
+        {
+            if (!IsEnabled)
+                throw new InvalidOperationException($"Tracer is not active, if you want to activate it call {nameof(Patch)}.");
+
+            if (HasTracer2)
+                throw new InvalidOperationException("Tracer2 is already present.");
+
+            _tracer2 = tracer ?? throw new ArgumentNullException(nameof(tracer));
+            TraceLine(justTracer2: true);
+        }
+
+        public static void Unregister()
+        {
+            if (!IsEnabled)
+                throw new InvalidOperationException("Tracer is not active.");
+
+            if (!HasTracer2)
+                throw new InvalidOperationException("Tracer2 is not present.");
+
+            TraceLine(justTracer2: true);
+            TraceLine(justTracer2: true);
+            _tracer2 = null;
+        }
+
         public static void Patch(int version, EngineIntrinsics context, PSHostUserInterface ui, ITracer tracer)
         {
-            _tracer = tracer;
+            if (IsEnabled)
+                throw new InvalidOperationException($"Tracer is already active, if you want to add another tracer call {nameof(Register)}.");
+
+            _tracer = tracer ?? throw new ArgumentNullException(nameof(tracer));
 
             var uiFieldName = version >= 7 ? "_externalUI" : "externalUI";
             // we get InternalHostUserInterface, grab external ui from that and replace it with ours
@@ -34,7 +63,7 @@ namespace Profiler
             var externalUI = (PSHostUserInterface)externalUIField.GetValue(ui);
 
             // replace it with out patched up UI that writes to profiler on debug
-            externalUIField.SetValue(ui, new TracerHostUI(externalUI, TraceLine));
+            externalUIField.SetValue(ui, new TracerHostUI(externalUI, () => TraceLine(false)));
 
             ResetUI = () =>
             {
@@ -126,6 +155,8 @@ namespace Profiler
                 };
             }
 
+            IsEnabled = true;
+
             // Add another event to the top apart from the scriptblock invocation
             // in Trace-ScriptInternal, this makes it more consistently work on first
             // run. Without this, the triggering line sometimes does not show up as 99.9%
@@ -134,21 +165,27 @@ namespace Profiler
 
         public static void Unpatch()
         {
+            IsEnabled = false;
             // Add Set-PSDebug -Trace 0 event and also another one for the internal disable
             // this make first run more consistent for some reason
             TraceLine();
             TraceLine();
             ResetUI();
             _tracer = null;
+            _tracer2 = null;
         }
 
         // keeping this public so I can write easier repros when something goes wrong, 
         // in that case we just need to patch, trace and unpatch and if that works then 
         // maybe the UI host does not work
-        public static void TraceLine()
+        public static void TraceLine(bool justTracer2 = false)
         {
             var traceLineInfo = GetTraceLineInfo();
-            _tracer.Trace(traceLineInfo);
+            if (!justTracer2)
+            {
+                _tracer.Trace(traceLineInfo);
+            }
+            _tracer2?.Trace(traceLineInfo);
         }
     }
 
