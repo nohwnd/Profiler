@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 
-   <!-- Build for PowrShell 5, 7 and PowerShell 3 and 4 separately. 3 and 4 does not have .Id property on ScriptBlock which we need for reporting speed 
+   <!-- Build for PowerShell 5, 7 and PowerShell 3 and 4 separately. 3 and 4 does not have .Id property on ScriptBlock which we need for reporting speed 
     in unbound scriptblocks, but if we just skip them we don't need it.-->  
   <PropertyGroup Condition=" '$(PowerShellVersion)' == '' ">
     <TargetFrameworks>netstandard2.0;net452;net451</TargetFrameworks>

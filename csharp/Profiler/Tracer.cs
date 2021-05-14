@@ -25,7 +25,7 @@ namespace Profiler
             return tracer;
         }
 
-        public static void Register(ITracer tracer)
+        public static void Register(object tracer)
         {
             if (!IsEnabled)
                 throw new InvalidOperationException($"Tracer is not active, if you want to activate it call {nameof(Patch)}.");
@@ -33,7 +33,7 @@ namespace Profiler
             if (HasTracer2)
                 throw new InvalidOperationException("Tracer2 is already present.");
 
-            _tracer2 = tracer ?? throw new ArgumentNullException(nameof(tracer));
+            _tracer2 = new ExternalTracerAdapter(tracer) ?? throw new ArgumentNullException(nameof(tracer));
             TraceLine(justTracer2: true);
         }
 
@@ -57,7 +57,7 @@ namespace Profiler
 
             _tracer = tracer ?? throw new ArgumentNullException(nameof(tracer));
 
-            var uiFieldName = version >= 7 ? "_externalUI" : "externalUI";
+            var uiFieldName = version >= 6 ? "_externalUI" : "externalUI";
             // we get InternalHostUserInterface, grab external ui from that and replace it with ours
             var externalUIField = ui.GetType().GetField(uiFieldName, BindingFlags.Instance | BindingFlags.NonPublic);
             var externalUI = (PSHostUserInterface)externalUIField.GetValue(ui);
@@ -94,7 +94,7 @@ namespace Profiler
             var stack = callStackField.GetValue(debugger);
             var initialLevel = (int)getCount.Invoke(stack, empty);
 
-            if (version == 3 || version == 4)
+            if (version == 3)
             {
                 // we do the same operation as in the TraceLineAction below, but here 
                 // we resolve the static things like types and properties, and then in the 
@@ -183,23 +183,23 @@ namespace Profiler
             var traceLineInfo = GetTraceLineInfo();
             if (!justTracer2)
             {
-                _tracer.Trace(traceLineInfo);
+                _tracer.Trace(traceLineInfo.Extent, traceLineInfo.ScriptBlock, traceLineInfo.Level);
             }
-            _tracer2?.Trace(traceLineInfo);
+            _tracer2?.Trace(traceLineInfo.Extent, traceLineInfo.ScriptBlock, traceLineInfo.Level);
         }
-    }
 
-    public struct TraceLineInfo
-    {
-        public IScriptExtent Extent;
-        public ScriptBlock ScriptBlock;
-        public int Level;
-
-        public TraceLineInfo(IScriptExtent extent, ScriptBlock scriptBlock, int level)
+        private struct TraceLineInfo
         {
-            Extent = extent;
-            ScriptBlock = scriptBlock;
-            Level = level;
+            public IScriptExtent Extent;
+            public ScriptBlock ScriptBlock;
+            public int Level;
+
+            public TraceLineInfo(IScriptExtent extent, ScriptBlock scriptBlock, int level)
+            {
+                Extent = extent;
+                ScriptBlock = scriptBlock;
+                Level = level;
+            }
         }
     }
 }
