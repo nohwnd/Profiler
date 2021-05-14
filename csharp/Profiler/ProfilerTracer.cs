@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Management.Automation;
+using System.Management.Automation.Language;
 
 namespace Profiler
 {
@@ -21,11 +22,8 @@ namespace Profiler
         public Dictionary<Guid, ScriptBlock> ScriptBlocks { get; } = new Dictionary<Guid, ScriptBlock>();
         public Dictionary<string, ScriptBlock> FileScriptBlocks { get; } = new Dictionary<string, ScriptBlock>();
 
-        public void Trace(TraceLineInfo traceLineInfo)
+        public void Trace(IScriptExtent extent, ScriptBlock scriptBlock, int level)
         {
-            var scriptBlock = traceLineInfo.ScriptBlock;
-            var extent = traceLineInfo.Extent;
-            var level = traceLineInfo.Level;
             var timestampRaw = Stopwatch.GetTimestamp();
             // usually 1 on Windows Desktop, 100 on *nix, but can be anything on some server systems like some Windows Server 2016
             long timestamp = _tickDivider == 1
