@@ -107,7 +107,7 @@ Describe "Trace-Script" {
 
         $trace = Trace-Script $sb
         $trace.AllLines.Count | Should -BeExactly 3 # first line is {
-        $trace.AllLines[0].Text | Should -Match '^throw' -Because 'the last line profiled should be the line throwing the exception'
+        $trace.AllLines[-1].Text | Should -Match '^throw' -Because 'the last line profiled should be the line throwing the exception'
     }
 
     It 'Counts hits both for lines and command hits on the same line' {

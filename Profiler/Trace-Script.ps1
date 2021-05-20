@@ -1,4 +1,18 @@
 $script:totals = [System.Collections.Queue]::new()
+
+function Write-TimeAndRestart ($sw) { 
+    $t = $sw.Elapsed
+
+    if ([timespan]::FromSeconds(1) -gt $t) { 
+        Write-Host -ForegroundColor DarkGray " ($([int]$t.TotalMilliseconds)ms)"
+    }
+    else { 
+        Write-Host -ForegroundColor DarkGray " ($([math]::Round($t.TotalSeconds, 2))s)"
+    }
+
+    $sw.Restart()
+}
+
 function Trace-Script {
     <#
     .DESCRIPTION
@@ -126,171 +140,20 @@ function Trace-Script {
 
     Write-Host -ForegroundColor Magenta "Processing $($traceCount) trace events. $(if (1000000 -lt $traceCount) { "This might take a while..."})"
 
-    Write-Host -ForegroundColor Magenta "Figuring out flow."
-    $stack = [System.Collections.Generic.Stack[int]]::new()
+    Write-Host -ForegroundColor Magenta "Figuring out flow." -NoNewline
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+        $trace = [Profiler.Profiler]::ProcessFlow($trace)
+    Write-TimeAndRestart $sw
 
-    $caller = $null
-    foreach ($hit in $trace) {
-        # there is next event in the trace,
-        # we can use it to see if we remained in the
-        # function or returned
-
-        if ($hit.Index -lt $traceCount - 2) {
-            $nextEvent = $trace[$hit.Index + 1]
-            # the next event has higher number on the callstack
-            # we are going down into a function, meaning this is a call
-            if ($nextEvent.Level -gt $hit.Level) {
-                $hit.Flow = [Profiler.Flow]::Call
-                # save where we entered
-                $stack.Push($hit.Index)
-                $hit.CallerIndex = $caller
-                $caller = $hit.Index
-            }
-            elseif ($nextEvent.Level -lt $hit.Level) {
-                $hit.Flow = [Profiler.Flow]::Return
-                # we go up, back from a function and we might jump up
-                # for example when throw happens and we end up in try catch
-                # that is x levels up
-                # get all the calls that happened up until this level
-                # and diff them against this to set their durations
-                while ($stack.Count -ge $hit.Level) {
-                    $callIndex = $stack.Pop()
-                    $call = $trace[$callIndex]
-                    # events are timestamped at the start, so start of when we called until
-                    # the next one after we returned is the duration of the whole call
-                    $call.Duration = [TimeSpan]::FromTicks($nextEvent.Timestamp - $call.Timestamp)
-                    # save into the call where it returned so we can see the events in the
-                    # meantime and see what was actually slow
-                    $call.ReturnIndex = $hit.Index
-                    # those are structs and we can't grab it by ref from the list
-                    # so we just overwrite
-                    $trace[$callIndex] = $call
-                }
-
-                # return from a function is not calling anything
-                # so the duration and self duration are the same
-                $hit.Duration = $hit.SelfDuration
-                $hit.ReturnIndex = $hit.Index
-                # who called us
-                $hit.CallerIndex = $caller
-            }
-            else {
-                # we stay in the function in the next step, so we did
-                # not call anyone or did not return, we are just processing
-                # the duration is the selfduration
-                $hit.Flow = [Profiler.Flow]::Process
-                $hit.Duration = $hit.SelfDuration
-                $hit.ReturnIndex = $hit.Index
-
-                # who called us
-                $hit.CallerIndex = $caller
-            }
-
-            # those are structs and we can't grab it by ref from the list
-            # so we just overwrite
-            $trace[$hit.Index] = $hit
-        }
-    }
-
-    Write-Host -ForegroundColor Magenta "Sorting events into lines."
-    # map of scriptblocks/files and lines
-    $fileMap = @{}
-    $contentMap = @{}
-    # excluding start and stop internal events
-    foreach ($hit in $trace[2..($traceCount-3)]) {
-        $key = $hit.ScriptBlockId
-        if (-not $contentMap.ContainsKey($key)) {
-            $content = $scriptBlocks[$key]
-            $lines = $content -split "`n"
-            $contentMap.Add($key, $lines)
-        }
-
-        $scriptBlock = $scriptBlocks[$key]
-        $lines = $contentMap[$key]
-        $line = $lines[$hit.Line-$ScriptBlock.StartPosition.StartLine]
-
-        if (-not $fileMap.ContainsKey($key)) {
-            $fileMap.Add($key, @{
-                    Path = if ($hit.IsInFile) { $hit.Path } else { $key }
-                    Name = if ($hit.IsInFile) { [IO.Path]::GetFileName($hit.Path) } else { $key }
-                    Lines = @{}
-                })
-        }
-
-
-        $file = $fileMap[$key]
-
-        $lineNumber = $hit.Line
-        if (-not $file.Lines.ContainsKey($lineNumber)) {
-            $lineProfile = [Profiler.LineProfile] @{
-                Name         = $file.Name
-                Line         = $lineNumber
-                # use the whole line we get from scriptblock, but if it is empty, there is open or close curly so print that
-                Text         = if ([string]::IsNullOrWhiteSpace($line)) { $hit.Text.Trim() } else { $line.Trim() }
-                Path         = $file.Path
-            }
-            $file.Lines.Add($lineNumber, $lineProfile)
-        }
-
-        $lineProfile = $file.Lines[$lineNumber]
-
-        $lineProfile.SelfDuration += $hit.SelfDuration
-        $lineProfile.HitCount++
-        $lineProfile.Hits.Add($hit)
-
-        # add distinct entries per column when there are more commands
-        # on the same line so we can see which commands contributed to the line duration
-        # if we need to count duration we can do it by moving this to the next part of the code
-        # where we process each hit on the line
-        if ($lineProfile.CommandHits.ContainsKey($hit.Column)) {
-            $commandHit = $lineProfile.CommandHits[$hit.Column]
-            $commandHit.SelfDuration += $hit.SelfDuration
-            # do not track duration for now, we are not listing each call to the command
-            # so we cannot add the durations correctly, because we need to exclude recursive calls
-            # it is also not very useful I think, might reconsider later
-            # $commandHit.Duration += $hit.Duration
-            $commandHit.HitCount++
-        }
-        else {
-            $commandHit = [Profiler.CommandHit]::new($hit)
-            $lineProfile.CommandHits.Add($hit.Column, $commandHit)
-        }
-    }
-
-    Write-Host -ForegroundColor Magenta "Figuring out durations per line."
-    foreach ($k in $fileMap.Keys) {
-        $file = $fileMap[$k]
-        $lineNumbers = $file.Lines.Keys | ForEach-Object { [int]::Parse($_) } | Sort-Object;
-        foreach ($lineNumber in $lineNumbers) {
-            $line = $file.Lines[$lineNumber]
-            # we can have calls that call into the same line
-            # simply adding durations together gives us times
-            # that can be way more than the execution time of the
-            # whole script because the line is accounted for multiple
-            # times. This is best visible when calling recursive function
-            # each subsequent call would add up to the previous ones
-            # https://twitter.com/nohwnd/status/1388418452130603008?s=20
-            # so we need to check if we are not in the current function
-            # by keeping the highest return index and only adding the time
-            # when we have index that is higher than it, meaning we are
-            # now running after we returned from the function
-            $returnIndex = 0
-            $duration = [timespan]::Zero
-            foreach ($hit in $line.Hits) {
-                if ($hit.Index -gt $returnIndex) {
-                    $duration += $hit.Duration
-                    $returnIndex = $hit.ReturnIndex
-                }
-            }
-            $line.Duration = $duration
-        }
-    }
+    Write-Host -ForegroundColor Magenta "Sorting events into lines." -NoNewline
+    $fileMap = [Profiler.Profiler]::ProcessLines($trace, $scriptBlocks, $false)
+    Write-TimeAndRestart $sw
 
     # trace starts with event from the measurement script where we enable tracing and ends with event where we disable it
     # events are timestamped at the start so user code duration is from the second event (index 1), till the last real event (index -2) where we disable tracing
     $total = if ($null -ne $trace -and 0 -lt @($trace).Count) { [TimeSpan]::FromTicks($trace[-2].Timestamp - $trace[2].Timestamp) } else { [TimeSpan]::Zero }
 
-    Write-Host -ForegroundColor Magenta "Counting averages and percentages."
+    Write-Host -ForegroundColor Magenta "Counting averages and percentages." -NoNewline
     # this is like SelectMany, it lists all the lines in all files into a single array
     $all = foreach ($line in $fileMap.Values.Lines.Values) {
         $line.SelfAverage = if ($line.HitCount -eq 0) { [TimeSpan]::Zero } else { [TimeSpan]::FromTicks($line.SelfDuration.Ticks / $line.HitCount) }
@@ -299,41 +162,42 @@ function Trace-Script {
         $line.Percent = [Math]::Round($line.Duration.Ticks / $ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
         $line
     }
+    Write-TimeAndRestart $sw
 
-    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest Duration."
-
+    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest Duration." -NoNewline
     $top50Duration = $all |
     Where-Object Duration -gt 0 |
     Sort-Object -Property Duration -Descending |
     Select-Object -First 50
+    Write-TimeAndRestart $sw
 
-    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest average Duration."
-
+    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest average Duration." -NoNewline
     $top50Average = $all |
     Where-Object Average -gt 0 |
     Sort-Object -Property Average -Descending |
     Select-Object -First 50
+    Write-TimeAndRestart $sw
 
-    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest SelfDuration."
-
+    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest SelfDuration." -NoNewline
     $top50SelfDuration = $all |
     Where-Object SelfDuration -gt 0 |
     Sort-Object -Property SelfDuration -Descending |
     Select-Object -First 50
+    Write-TimeAndRestart $sw
 
-    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest average SelfDuration."
-
+    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest average SelfDuration." -NoNewline
     $top50SelfAverage = $all |
     Where-Object SelfAverage -gt 0 |
     Sort-Object -Property SelfAverage -Descending |
     Select-Object -First 50
+    Write-TimeAndRestart $sw
 
-    Write-Host -ForegroundColor Magenta "Getting Top50 with the most hits."
-
+    Write-Host -ForegroundColor Magenta "Getting Top50 with the most hits." -NoNewline
     $top50HitCount = $all |
     Where-Object HitCount -gt 0 |
     Sort-Object -Property HitCount -Descending |
     Select-Object -First 50
+    Write-TimeAndRestart $sw
 
     # do not use object initializer syntax here @{}
     # when it fails it will not create any object
@@ -345,15 +209,15 @@ function Trace-Script {
     # this way we can get the partial object out for 
     # debugging when this fails on someones system
     $script:processedTrace = [Profiler.Trace]::new()
-    $script:processedTrace.TotalDuration     = $total
+    $script:processedTrace.TotalDuration = $total
     $script:processedTrace.StopwatchDuration = $out.Stopwatch
-    $script:processedTrace.Events            = $trace
-    $script:processedTrace.AllLines          = $all
-    $script:processedTrace.Top50Duration     = $top50Duration
-    $script:processedTrace.Top50Average      = $top50Average
-    $script:processedTrace.Top50HitCount     = $top50HitCount
+    $script:processedTrace.Events = $trace
+    $script:processedTrace.AllLines = $all
+    $script:processedTrace.Top50Duration = $top50Duration
+    $script:processedTrace.Top50Average = $top50Average
+    $script:processedTrace.Top50HitCount = $top50HitCount
     $script:processedTrace.Top50SelfDuration = $top50SelfDuration
-    $script:processedTrace.Top50SelfAverage  = $top50SelfAverage
+    $script:processedTrace.Top50SelfAverage = $top50SelfAverage
 
     $script:processedTrace
 
@@ -460,7 +324,7 @@ function Show-ScriptExecution {
     }
 
     foreach ($e in $trace.Events) {
-        $text = $e.Extent.Text.Trim()
+        $text = $e.Extent.Text.ToString().Trim()
         $o = "$ansi_escape[48;2;$r;$g;${b}m$text$ansi_escape[0m"
         $margin = ' ' * ($e.Level)
         Write-Host "$margin$o"

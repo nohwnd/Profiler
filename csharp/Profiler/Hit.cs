@@ -45,7 +45,7 @@ namespace Profiler
         public Guid ScriptBlockId;
 
         // profiler specific fields
-        public long Index;
+        public int Index;
         public TimeSpan Overhead;
 
         // extent file might be empty when we are in unsaves scriptblock
