@@ -183,7 +183,7 @@ namespace Profiler
             var traceLineInfo = GetTraceLineInfo();
             if (!justTracer2)
             {
-                _tracer.Trace(traceLineInfo.Extent, traceLineInfo.ScriptBlock, traceLineInfo.Level);
+                _tracer?.Trace(traceLineInfo.Extent, traceLineInfo.ScriptBlock, traceLineInfo.Level);
             }
             _tracer2?.Trace(traceLineInfo.Extent, traceLineInfo.ScriptBlock, traceLineInfo.Level);
         }

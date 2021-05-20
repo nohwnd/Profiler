@@ -61,7 +61,7 @@ namespace Profiler
         /// <summary>
         /// Event records for all hits to the line.
         /// </summary>
-        public ICollection<Hit> Hits { get; set; } = new List<Hit>();
+        public ICollection<int> Hits { get; set; } = new List<int>();
 
         /// <summary>
         /// All command hits in this line using column as key.

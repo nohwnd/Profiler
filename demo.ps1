@@ -2,7 +2,7 @@
 
 Import-Module $PSScriptRoot/Profiler/Profiler.psm1 -Force
 
-$trace =  Trace-Script -ScriptBlock { & "$PSScriptRoot/demo-scripts/MyScript.ps1" }
+$trace =  Trace-Script -ScriptBlock { & "$PSScriptRoot/demo-scripts/MyScript.ps1" } -Flag @{ _profiler = $true }
 
 # Shows the top 50 lines that take the most percent of the run
 $trace.Top50Duration | Format-Table

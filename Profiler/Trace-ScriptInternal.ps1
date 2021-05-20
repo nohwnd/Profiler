@@ -18,7 +18,7 @@ function Trace-ScriptInternal {
 
     Assert-PowerShellVersion
 
-    Write-Host -ForegroundColor Magenta "Running in PowerShell $($PSVersionTable.PSVersion)."
+    Write-Host -ForegroundColor Magenta "Running in PowerShell $($PSVersionTable.PSVersion) $([System.IntPtr]::Size*8)-bit."
 
     if (0 -ge $Preheat) {
         $Preheat = 0
@@ -175,7 +175,7 @@ function Measure-ScriptHarmony ($ScriptBlock) {
     }
 
     if ($null -eq $result.Trace -or 0 -eq @($result.Trace).Count) { 
-        throw "Trace is null or empty."
+        throw "Trace is null or empty. $(if ($null -ne $err) { "There was an error: $err."})"
     }
 
     $firstLine = $result.Trace[0]
