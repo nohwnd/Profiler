@@ -94,6 +94,7 @@ namespace Profiler
             var contentMap = new Dictionary<Guid, string[]>();
             var returnIndexPerLineMap = new Dictionary<Guid, Dictionary<int, int>>();
             var traceCount = trace.Count;
+            var newLineArray = new string[] { Environment.NewLine };
 
             ScriptBlock lastScriptBlock = null;
             // excluding start and stop internal events
@@ -106,7 +107,7 @@ namespace Profiler
                 {
                     lastScriptBlock = scriptBlocks[key];
                     // there is an edge case when using classes that will fail to convert to string
-                    try { lines = lastScriptBlock?.ToString().Split('\n'); } catch { lines = null; }
+                    try { lines = lastScriptBlock?.Ast.ToString().Split(newLineArray, StringSplitOptions.None); } catch { lines = null; }
                     contentMap.Add(key, lines);
                 }
 
