@@ -205,9 +205,9 @@ namespace Profiler
                 }
 
                 lineProfile.HitCount++;
-                if (collectAllHits || lineProfile.Hits.Count < 10)
+                if (collectAllHits || lineProfile.Hits.Count < 100)
                 {
-                    lineProfile.Hits.Add(hit.Index);
+                    lineProfile.Hits.Add(hit);
                 }
 
                 // add distinct entries per column when there are more commands
