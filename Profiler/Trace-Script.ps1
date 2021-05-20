@@ -149,34 +149,6 @@ function Trace-Script {
     $fileMap = [Profiler.Profiler]::ProcessLines($trace, $scriptBlocks, $false)
     Write-TimeAndRestart $sw
 
-    # Write-Host -ForegroundColor Magenta "Figuring out durations per line." -NoNewline
-    # foreach ($k in $fileMap.Keys) {
-    #     $file = $fileMap[$k]
-    #     foreach ($line in $file.Lines.Values) {
-    #         # we can have calls that call into the same line
-    #         # simply adding durations together gives us times
-    #         # that can be way more than the execution time of the
-    #         # whole script because the line is accounted for multiple
-    #         # times. This is best visible when calling recursive function
-    #         # each subsequent call would add up to the previous ones
-    #         # https://twitter.com/nohwnd/status/1388418452130603008?s=20
-    #         # so we need to check if we are not in the current function
-    #         # by keeping the highest return index and only adding the time
-    #         # when we have index that is higher than it, meaning we are
-    #         # now running after we returned from the function
-    #         $returnIndex = 0
-    #         $duration = [timespan]::Zero
-    #         foreach ($hit in $line.Hits) {
-    #             if ($hit.Index -gt $returnIndex) {
-    #                 $duration = $duration.Add($hit.Duration)
-    #                 $returnIndex = $hit.ReturnIndex
-    #             }
-    #         }
-    #         $line.Duration = $duration
-    #     }
-    # }
-    # Write-TimeAndRestart $sw
-
     # trace starts with event from the measurement script where we enable tracing and ends with event where we disable it
     # events are timestamped at the start so user code duration is from the second event (index 1), till the last real event (index -2) where we disable tracing
     $total = if ($null -ne $trace -and 0 -lt @($trace).Count) { [TimeSpan]::FromTicks($trace[-2].Timestamp - $trace[2].Timestamp) } else { [TimeSpan]::Zero }
