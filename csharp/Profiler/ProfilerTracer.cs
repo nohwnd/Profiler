@@ -17,12 +17,23 @@ namespace Profiler
         private static double _tickDivider = ((double)Stopwatch.Frequency) / TimeSpan.TicksPerSecond;
         internal int _index = 0;
         internal Hit _previousHit;
+        //private List<string> _excludedPaths;
 
         public List<Hit> Hits { get; } = new List<Hit>();
         public Dictionary<Guid, ScriptBlock> ScriptBlocks { get; } = new Dictionary<Guid, ScriptBlock>();
         public Dictionary<string, ScriptBlock> FileScriptBlocks { get; } = new Dictionary<string, ScriptBlock>();
 
-        public void Trace(IScriptExtent extent, ScriptBlock scriptBlock, int level)
+        public ProfilerTracer(/*IEnumerable<string> excludedPaths*/)
+        {
+            //_excludedPaths = excludedPaths.Where(p=> !string.IsNullOrWhiteSpace(p)).Select( NormalizePath).ToList() ?? new List<string>();
+        }
+
+        //private static string NormalizePath(string path)
+        //{
+        //    return path?.Replace("\\", Environment.NewLine).Replace("/", Environment.NewLine).Trim('\\', '/');
+        //}
+
+        public void Trace(string message, IScriptExtent extent, ScriptBlock scriptBlock, int level)
         {
             var timestampRaw = Stopwatch.GetTimestamp();
             // usually 1 on Windows Desktop, 100 on *nix, but can be anything on some server systems like some Windows Server 2016
