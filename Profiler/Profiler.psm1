@@ -13,5 +13,6 @@ else {
 . "$PSScriptRoot/Invoke-Script.ps1"
 . "$PSScriptRoot/Trace-ScriptInternal.ps1"
 . "$PSScriptRoot/Trace-Script.ps1"
+. "$PSScriptRoot/Export-SpeedScope.ps1"
 
 Export-ModuleMember -Function 'Invoke-Script', 'Trace-Script', 'Get-LatestTrace', 'Show-ScriptExecution'
