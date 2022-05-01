@@ -118,7 +118,8 @@ function Trace-Script {
         [Switch] $DisableWarning,
         [Hashtable] $Flag,
         [Switch] $Before,
-        [Switch] $After
+        [Switch] $After,
+        [string] $ExportPath
         # [Switch] $UseNativePowerShell7Profiler
     )
 
@@ -142,7 +143,7 @@ function Trace-Script {
 
     Write-Host -ForegroundColor Magenta "Figuring out flow." -NoNewline
     $sw = [Diagnostics.Stopwatch]::StartNew()
-        $trace = [Profiler.Profiler]::ProcessFlow($trace)
+    $trace = [Profiler.Profiler]::ProcessFlow($trace)
     Write-TimeAndRestart $sw
 
     Write-Host -ForegroundColor Magenta "Sorting events into lines." -NoNewline
@@ -267,6 +268,10 @@ function Trace-Script {
     else {
         Write-Host -ForegroundColor Magenta "Duration: $(if ($Before) { "B:" } else {"A:" }) " -NoNewline
         Write-Host -ForegroundColor Yellow $total
+    }
+
+    if ($ExportPath) {
+        Export-SpeedScope -Trace $script:processedTrace -Path $ExportPath
     }
 
     Write-Host -ForegroundColor Magenta "Done. Try $(if ($variable) { "$($variable)" } else { '$yourVariable' }).Top50Duration | Format-Table to get the report. There are also Top50Average, Top50SelfDuration, Top50SelfAverage, Top50HitCount, AllLines and Events."
