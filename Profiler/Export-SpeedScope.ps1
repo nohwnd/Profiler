@@ -47,7 +47,7 @@ function Get-NextName {
         [string] $Name = 'profiler_<id>.speedscope.json'
     )
 
-    $Name = $Name -like "*.speedscope.json" ? $Name : "$Name.speedscope.json"
+    $Name = if ($Name -like "*.speedscope.json") { $Name } else { "$Name.speedscope.json" }
     $idTemplate = '<id>'
     $hasIdTemplate = $Name -like "*$idTemplate*"
 
