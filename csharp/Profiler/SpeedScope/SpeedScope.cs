@@ -137,7 +137,7 @@ namespace Profiler.SpeedScope
                         // This shows every line, with path, but we should probably rather fold into functions
                         // var fileMarker = keyEvent.IsInFile ? $"|{keyEvent.Path}:{keyEvent.Line}" : null;
                         // var key = $"{keyEvent.Text}{fileMarker}";
-                        var key = keyEvent.Text;
+                        var key = keyEvent.FunctionName != "<ScriptBlock>" ? keyEvent.FunctionName : keyEvent.Text;
 
                         if (!frameDictionary.TryGetValue(key, out index))
                         {

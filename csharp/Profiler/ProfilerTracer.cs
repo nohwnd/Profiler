@@ -22,7 +22,7 @@ namespace Profiler
         public Dictionary<Guid, ScriptBlock> ScriptBlocks { get; } = new Dictionary<Guid, ScriptBlock>();
         public Dictionary<string, ScriptBlock> FileScriptBlocks { get; } = new Dictionary<string, ScriptBlock>();
 
-        public void Trace(IScriptExtent extent, ScriptBlock scriptBlock, int level)
+        public void Trace(IScriptExtent extent, ScriptBlock scriptBlock, int level, string functionName, string moduleName)
         {
             var timestampRaw = Stopwatch.GetTimestamp();
             // usually 1 on Windows Desktop, 100 on *nix, but can be anything on some server systems like some Windows Server 2016
@@ -78,6 +78,9 @@ namespace Profiler
                 StartOffset = extent.StartOffset,
                 EndOffset = extent.EndOffset,
             };
+
+            _previousHit.ModuleName = moduleName;
+            _previousHit.FunctionName = functionName;
             _previousHit.Level = level;
 
             _index++;

@@ -60,6 +60,19 @@ namespace Profiler
         public string Text => Extent.Text;
         public long Timestamp => StartTime.Ticks;
 
+        /// <summary>
+        /// The function name that is on top of stack.
+        /// </summary>
+        public string FunctionName;
+
+        /// <summary>
+        /// The module name where that function is coming from.
+        /// </summary>
+        public string ModuleName;
+
+        /// <summary>
+        /// How deep we are in the call stack.
+        /// </summary>
         public int Level;
 
         public Flow Flow;
