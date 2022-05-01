@@ -134,8 +134,10 @@ namespace Profiler.SpeedScope
                         // when we return we need to use the Text of who called us, because otherwise the event points to a different frame name
                         // and sppeed scope complains that we are leaving different frame than the one we intered
                         var keyEvent = flow == Flow.Call ? @event : events[callerIndex];
-                        var fileMarker = keyEvent.IsInFile ? $"|{keyEvent.Path}:{keyEvent.Line}" : null;
-                        var key = $"{keyEvent.Text}{fileMarker}";
+                        // This shows every line, with path, but we should probably rather fold into functions
+                        // var fileMarker = keyEvent.IsInFile ? $"|{keyEvent.Path}:{keyEvent.Line}" : null;
+                        // var key = $"{keyEvent.Text}{fileMarker}";
+                        var key = keyEvent.Text;
 
                         if (!frameDictionary.TryGetValue(key, out index))
                         {
