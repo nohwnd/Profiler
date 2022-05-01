@@ -33,11 +33,13 @@ function Export-SpeedScope {
             }
         }
 
-        $report = Convert-SpeedScope -Name $finalName -Events $trace.Events
+        # $report = Convert-SpeedScope -Name $finalName -Events $trace.Events
 
-        $destination = (Join-Path $finalPath $finalName)
-        Write-Host "converted in $($sw.ElapsedMilliseconds) ms"
-        Set-Content -Value (ConvertTo-Json $report -Depth 5) -Encoding UTF8 -Path $destination
+        # $destination = (Join-Path $finalPath $finalName)
+        # Write-Host "converted in $($sw.ElapsedMilliseconds) ms"
+        # Set-Content -Value (ConvertTo-Json $report -Depth 5) -Encoding UTF8 -Path $destination
+        $exporter = "$($ExecutionContext.SessionState.Module.Name)@$($ExecutionContext.SessionState.Module.Version)"
+        $destination = [Profiler.SpeedScope.SpeedScope]::Export($exporter, $Trace, $finalPath, $finalName)
         Write-TimeAndRestart $sw
         Write-Host -ForegroundColor Cyan "Exported for https://speedscope.app/, to: $destination"
     }
@@ -74,6 +76,8 @@ function Convert-SpeedScope {
         $Name,
         $Events
     )
+
+    return [Profiler.SpeedScope.SpeedScope]::Convert("aaa", $Trace, $Name)
 
     # schema: https://github.com/jlfwong/speedscope/blob/main/src/lib/file-format-spec.ts
     $process = Get-Process -Id $pid
@@ -120,7 +124,6 @@ function Convert-EventsAndFrames {
     $c = 0
     foreach ($event in $Events) {
 
-        
         if ($Event.index % 100000 -eq 0) { 
             Write-Host "$($Event.index) in $($sw.ElapsedMilliseconds) ms"
         }
