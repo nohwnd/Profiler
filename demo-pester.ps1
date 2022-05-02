@@ -10,6 +10,6 @@ $sb = {
 }
 
 
-$trace = Trace-Script $sb -Preheat 0
+$trace = Trace-Script $sb -Preheat 0 -ExportPath pester
 
   # $trace.Top50Duration | Format-Table 

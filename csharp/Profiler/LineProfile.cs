@@ -24,19 +24,9 @@ namespace Profiler
         public TimeSpan Duration { get; set; } = TimeSpan.Zero;
 
         /// <summary>
-        /// Average of duration for all hits.
-        /// </summary>
-        public TimeSpan Average { get; set; } = TimeSpan.Zero;
-
-        /// <summary>
         /// Time used exclusively by this line.
         /// </summary>
         public TimeSpan SelfDuration { get; set; } = TimeSpan.Zero;
-
-        /// <summary>
-        /// Average of SelfDuration for all hits.
-        /// </summary>
-        public TimeSpan SelfAverage { get; set; } = TimeSpan.Zero;
 
         /// <summary>
         /// Name of file or id of scriptblock the line belongs to.
@@ -49,6 +39,16 @@ namespace Profiler
         public uint Line { get; set; }
 
         /// <summary>
+        /// Function of line.
+        /// </summary>
+        public string Function { get; set; }
+
+        /// <summary>
+        /// Module of line.
+        /// </summary>
+        public string Module { get; set; }
+
+        /// <summary>
         /// Text of line.
         /// </summary>
         public string Text { get; set; }
@@ -57,6 +57,16 @@ namespace Profiler
         /// Absolute path of file or id of scriptblock the line belongs to.
         /// </summary>
         public string Path { get; set; }
+
+        /// <summary>
+        /// Average of duration for all hits.
+        /// </summary>
+        public TimeSpan Average { get; set; } = TimeSpan.Zero;
+
+        /// <summary>
+        /// Average of SelfDuration for all hits.
+        /// </summary>
+        public TimeSpan SelfAverage { get; set; } = TimeSpan.Zero;
 
         /// <summary>
         /// Event records for all hits to the line.

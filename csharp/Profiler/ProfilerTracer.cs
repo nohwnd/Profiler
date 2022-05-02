@@ -15,6 +15,7 @@ namespace Profiler
         // is smaller than ticks per second this otherwise results in 0, and all timestamps then
         // become positive infininty becaue of timestamp / 0 = ∞ or when cast to long: -9223372036854775808
         private static double _tickDivider = ((double)Stopwatch.Frequency) / TimeSpan.TicksPerSecond;
+        private const string ScriptBlockName = "<ScriptBlock>";
         internal int _index = 0;
         internal Hit _previousHit;
 
@@ -80,7 +81,7 @@ namespace Profiler
             };
 
             _previousHit.ModuleName = moduleName;
-            _previousHit.FunctionName = functionName;
+            _previousHit.FunctionName = functionName != ScriptBlockName ? functionName : null;
             _previousHit.Level = level;
 
             _index++;
