@@ -155,6 +155,8 @@ function Trace-Script {
     $fileMap = [Profiler.Profiler]::ProcessLines($trace, $scriptBlocks, $false)
     Write-TimeAndRestart $sw
 
+    $global:functionMap = [Profiler.Profiler]::ProcessFunctions($trace)
+
     # trace starts with event from the measurement script where we enable tracing and ends with event where we disable it
     # events are timestamped at the start so user code duration is from the second event (index 1), till the last real event (index -2) where we disable tracing
     $total = if ($null -ne $trace -and 0 -lt @($trace).Count) { [TimeSpan]::FromTicks($trace[-2].Timestamp - $trace[2].Timestamp) } else { [TimeSpan]::Zero }

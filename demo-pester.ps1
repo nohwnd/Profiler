@@ -6,7 +6,7 @@ Import-Module $PSScriptRoot/Profiler/Profiler.psd1 -Force
 $sb = {
         ${global:function:Set-PSBreakpoint} = {}
         ${global:function:Get-PSBreakpoint} = {}
-        /p/pester/test.ps1 -SkipPTests
+        c:\p/pester/test.ps1 -SkipPTests
 }
 
 
