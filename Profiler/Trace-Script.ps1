@@ -162,10 +162,9 @@ function Trace-Script {
     Write-Host -ForegroundColor Magenta "Counting averages and percentages." -NoNewline
     # this is like SelectMany, it lists all the lines in all files into a single array
     $all = foreach ($line in $fileMap.Values.Lines.Values) {
-        $line.SelfAverage = if ($line.HitCount -eq 0) { [TimeSpan]::Zero } else { [TimeSpan]::FromTicks($line.SelfDuration.Ticks / $line.HitCount) }
-        $line.Average = if ($line.HitCount -eq 0) { [TimeSpan]::Zero } else { [TimeSpan]::FromTicks($line.Duration.Ticks / $line.HitCount) }
         $ticks = if (0 -ne $total.Ticks) { $total.Ticks } else { 1 }
         $line.Percent = [Math]::Round($line.Duration.Ticks / $ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
+        $line.SelfPercent = [Math]::Round($line.SelfDuration.Ticks / $ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
         $line
     }
     Write-TimeAndRestart $sw
@@ -177,24 +176,10 @@ function Trace-Script {
     Select-Object -First 50
     Write-TimeAndRestart $sw
 
-    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest average Duration." -NoNewline
-    $top50Average = $all |
-    Where-Object Average -gt 0 |
-    Sort-Object -Property Average -Descending |
-    Select-Object -First 50
-    Write-TimeAndRestart $sw
-
     Write-Host -ForegroundColor Magenta "Getting Top50 with the longest SelfDuration." -NoNewline
     $top50SelfDuration = $all |
     Where-Object SelfDuration -gt 0 |
     Sort-Object -Property SelfDuration -Descending |
-    Select-Object -First 50
-    Write-TimeAndRestart $sw
-
-    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest average SelfDuration." -NoNewline
-    $top50SelfAverage = $all |
-    Where-Object SelfAverage -gt 0 |
-    Sort-Object -Property SelfAverage -Descending |
     Select-Object -First 50
     Write-TimeAndRestart $sw
 
@@ -220,10 +205,8 @@ function Trace-Script {
     $script:processedTrace.Events = $trace
     $script:processedTrace.AllLines = $all
     $script:processedTrace.Top50Duration = $top50Duration
-    $script:processedTrace.Top50Average = $top50Average
     $script:processedTrace.Top50HitCount = $top50HitCount
     $script:processedTrace.Top50SelfDuration = $top50SelfDuration
-    $script:processedTrace.Top50SelfAverage = $top50SelfAverage
 
     $script:processedTrace
 

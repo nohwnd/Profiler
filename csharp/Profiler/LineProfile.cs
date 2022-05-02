@@ -9,9 +9,14 @@ namespace Profiler
     public class LineProfile
     {
         /// <summary>
-        /// Percent of total duration used by line.
+        /// Percent of total duration used by line and all the code it calls.
         /// </summary>
         public double Percent { get; set; } = 0.00;
+
+        /// <summary>
+        /// Percent of total duration used by line.
+        /// </summary>
+        public double SelfPercent { get; set; } = 0.00;
 
         /// <summary>
         /// Number of hits on line.
@@ -39,12 +44,12 @@ namespace Profiler
         public uint Line { get; set; }
 
         /// <summary>
-        /// Function of line.
+        /// Function that called this line.
         /// </summary>
         public string Function { get; set; }
 
         /// <summary>
-        /// Module of line.
+        /// Module that contains the function that called the line.
         /// </summary>
         public string Module { get; set; }
 
@@ -57,16 +62,6 @@ namespace Profiler
         /// Absolute path of file or id of scriptblock the line belongs to.
         /// </summary>
         public string Path { get; set; }
-
-        /// <summary>
-        /// Average of duration for all hits.
-        /// </summary>
-        public TimeSpan Average { get; set; } = TimeSpan.Zero;
-
-        /// <summary>
-        /// Average of SelfDuration for all hits.
-        /// </summary>
-        public TimeSpan SelfAverage { get; set; } = TimeSpan.Zero;
 
         /// <summary>
         /// Event records for all hits to the line.
