@@ -443,3 +443,5 @@ $RECYCLE.BIN/
 
 pwsh7-nohwnd
 
+*.speedscope.json
+
