@@ -9,7 +9,7 @@ $sln = "$PSScriptRoot/csharp/Profiler.sln"
 Write-Host "Publish and copy dlls"
 $frameworks = "net452", "netstandard2.0"
 foreach ($framework in $frameworks) {
-    dotnet publish $sln --framework $framework --configuration $Configuration --no-restore
+    dotnet publish $sln --framework $framework --configuration $Configuration
 
     if (0 -ne $LASTEXITCODE) { 
         throw "Publish failed"

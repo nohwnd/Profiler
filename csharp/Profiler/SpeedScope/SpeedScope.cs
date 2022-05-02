@@ -157,7 +157,7 @@ namespace Profiler.SpeedScope
                         }
                         else
                         {
-                            key = keyEvent.FunctionName != null ? keyEvent.FunctionName : keyEvent.Text;
+                            key = keyEvent.Function != null ? keyEvent.Function : keyEvent.Text;
                             if (key == "{" || key == "}")
                             {
                                 key = key + "|" + keyEvent.Path;

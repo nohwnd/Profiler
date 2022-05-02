@@ -80,8 +80,8 @@ namespace Profiler
                 EndOffset = extent.EndOffset,
             };
 
-            _previousHit.ModuleName = moduleName;
-            _previousHit.FunctionName = functionName != ScriptBlockName ? functionName : null;
+            _previousHit.Module = moduleName;
+            _previousHit.Function = functionName != ScriptBlockName ? functionName : null;
             _previousHit.Level = level;
 
             _index++;

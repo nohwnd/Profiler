@@ -98,7 +98,7 @@ namespace Profiler
 
                 //// Group Pester entries, to have the same identifier, we need to check also path because we often take scriptblocks from Pester and invoke them 
                 //// in another session state, where they won't tie to Pester module.
-                if (hit.ModuleName == "Pester" || (hit.Path != null && (hit.Path.EndsWith("Pester.psm1") || hit.Path.EndsWith("Pester.ps1") || hit.Path.EndsWith("Pester.psd1"))))
+                if (hit.Module == "Pester" || (hit.Path != null && (hit.Path.EndsWith("Pester.psm1") || hit.Path.EndsWith("Pester.ps1") || hit.Path.EndsWith("Pester.psd1"))))
                 {
                     hit.Group = "Pester";
 
@@ -263,8 +263,8 @@ namespace Profiler
                         Name = file.Name,
                         Line = (uint)lineNumber,
                         Text = text,
-                        Function = hit.FunctionName,
-                        Module = hit.ModuleName,
+                        Function = hit.Function,
+                        Module = hit.Module,
                         Path = file.Path,
                     };
                     file.Lines.Add(lineNumber, lineProfile);

@@ -64,12 +64,12 @@ namespace Profiler
         /// <summary>
         /// The function name that is on top of stack.
         /// </summary>
-        public string FunctionName;
+        public string Function;
 
         /// <summary>
         /// The module name where that function is coming from.
         /// </summary>
-        public string ModuleName;
+        public string Module;
 
         /// <summary>
         /// How deep we are in the call stack.
