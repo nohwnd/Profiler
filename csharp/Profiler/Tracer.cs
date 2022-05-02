@@ -3,6 +3,7 @@ using System.Management.Automation;
 using System.Management.Automation.Host;
 using System.Management.Automation.Language;
 using System.Reflection;
+using System.Threading;
 using NonGeneric = System.Collections;
 
 namespace Profiler
@@ -112,6 +113,9 @@ namespace Profiler
                 var functionContextType = functionContext1.GetType();
 
                 var scriptBlockField = functionContextType.GetField("_scriptBlock", BindingFlags.Instance | BindingFlags.NonPublic);
+                var functionNameField = functionContextType.GetField("_functionName", BindingFlags.Instance | BindingFlags.NonPublic);
+                var executionContextField = functionContextType.GetField("_executionContext", BindingFlags.Instance | BindingFlags.NonPublic);
+                var sessionStateProperty = executionContextField.FieldType.GetProperty("SessionState", BindingFlags.Instance | BindingFlags.NonPublic);
                 var currentPositionProperty = functionContextType.GetProperty("CurrentPosition", BindingFlags.Instance | BindingFlags.NonPublic);
 
                 var scriptBlock1 = (ScriptBlock)scriptBlockField.GetValue(functionContext1);
@@ -125,10 +129,14 @@ namespace Profiler
                     var last = callStackList[callStackList.Count - 1];
                     var functionContext = functionContextProperty.GetValue(last);
 
+                    string functionName = (string)functionNameField.GetValue(functionContext);
+                    var executionContext = executionContextField.GetValue(functionContext);
+                    var sessionState = (SessionState)sessionStateProperty.GetValue(executionContext, empty);
+                    var moduleName = sessionState.Module?.Name;
                     var scriptBlock = (ScriptBlock)scriptBlockField.GetValue(functionContext);
                     var extent = (IScriptExtent)currentPositionProperty.GetValue(functionContext);
 
-                    return new TraceLineInfo(extent, scriptBlock, level);
+                    return new TraceLineInfo(extent, scriptBlock, level, functionName, moduleName);
                 };
             }
             else
@@ -137,6 +145,9 @@ namespace Profiler
 
                 object functionContext1 = lastFunctionContextMethod.Invoke(callStackField.GetValue(debugger), empty);
                 var functionContextType = functionContext1.GetType();
+                var functionNameField = functionContextType.GetField("_functionName", BindingFlags.Instance | BindingFlags.NonPublic);
+                var executionContextField = functionContextType.GetField("_executionContext", BindingFlags.Instance | BindingFlags.NonPublic);
+                var sessionStateProperty = executionContextField.FieldType.GetProperty("SessionState", BindingFlags.Instance | BindingFlags.NonPublic);
                 var scriptBlockField = functionContextType.GetField("_scriptBlock", BindingFlags.Instance | BindingFlags.NonPublic);
                 var currentPositionProperty = functionContextType.GetProperty("CurrentPosition", BindingFlags.Instance | BindingFlags.NonPublic);
 
@@ -148,10 +159,15 @@ namespace Profiler
                     var callStack = callStackField.GetValue(debugger);
                     var level = (int)getCount.Invoke(callStack, empty) - initialLevel;
                     object functionContext = lastFunctionContextMethod.Invoke(callStack, empty);
+
+                    var executionContext = executionContextField.GetValue(functionContext);
+                    var sessionState = (SessionState) sessionStateProperty.GetValue(executionContext, empty);
+                    var moduleName = sessionState.Module?.Name;
+                    var functionName = (string)functionNameField.GetValue(functionContext);
                     var scriptBlock = (ScriptBlock)scriptBlockField.GetValue(functionContext);
                     var extent = (IScriptExtent)currentPositionProperty.GetValue(functionContext);
 
-                    return new TraceLineInfo(extent, scriptBlock, level);
+                    return new TraceLineInfo(extent, scriptBlock, level, functionName, moduleName);
                 };
             }
 
@@ -183,9 +199,9 @@ namespace Profiler
             var traceLineInfo = GetTraceLineInfo();
             if (!justTracer2)
             {
-                _tracer?.Trace(traceLineInfo.Extent, traceLineInfo.ScriptBlock, traceLineInfo.Level);
+                _tracer?.Trace(traceLineInfo.Extent, traceLineInfo.ScriptBlock, traceLineInfo.Level, traceLineInfo.FunctionName, traceLineInfo.ModuleName);
             }
-            _tracer2?.Trace(traceLineInfo.Extent, traceLineInfo.ScriptBlock, traceLineInfo.Level);
+            _tracer2?.Trace(traceLineInfo.Extent, traceLineInfo.ScriptBlock, traceLineInfo.Level, traceLineInfo.FunctionName, traceLineInfo.ModuleName);
         }
 
         private struct TraceLineInfo
@@ -193,12 +209,16 @@ namespace Profiler
             public IScriptExtent Extent;
             public ScriptBlock ScriptBlock;
             public int Level;
+            public string FunctionName;
+            public string ModuleName;
 
-            public TraceLineInfo(IScriptExtent extent, ScriptBlock scriptBlock, int level)
+            public TraceLineInfo(IScriptExtent extent, ScriptBlock scriptBlock, int level, string functionName, string moduleName)
             {
                 Extent = extent;
                 ScriptBlock = scriptBlock;
                 Level = level;
+                FunctionName = functionName;
+                ModuleName = moduleName;
             }
         }
     }

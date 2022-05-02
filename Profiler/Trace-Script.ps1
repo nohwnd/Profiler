@@ -146,6 +146,11 @@ function Trace-Script {
     $trace = [Profiler.Profiler]::ProcessFlow($trace)
     Write-TimeAndRestart $sw
 
+    Write-Host -ForegroundColor Magenta "Grouping and folding." -NoNewline
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    $trace = [Profiler.Profiler]::ProcessGroupAndFold($trace)
+    Write-TimeAndRestart $sw
+
     Write-Host -ForegroundColor Magenta "Sorting events into lines." -NoNewline
     $fileMap = [Profiler.Profiler]::ProcessLines($trace, $scriptBlocks, $false)
     Write-TimeAndRestart $sw

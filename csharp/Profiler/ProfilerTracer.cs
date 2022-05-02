@@ -15,6 +15,7 @@ namespace Profiler
         // is smaller than ticks per second this otherwise results in 0, and all timestamps then
         // become positive infininty becaue of timestamp / 0 = ∞ or when cast to long: -9223372036854775808
         private static double _tickDivider = ((double)Stopwatch.Frequency) / TimeSpan.TicksPerSecond;
+        private const string ScriptBlockName = "<ScriptBlock>";
         internal int _index = 0;
         internal Hit _previousHit;
 
@@ -22,7 +23,7 @@ namespace Profiler
         public Dictionary<Guid, ScriptBlock> ScriptBlocks { get; } = new Dictionary<Guid, ScriptBlock>();
         public Dictionary<string, ScriptBlock> FileScriptBlocks { get; } = new Dictionary<string, ScriptBlock>();
 
-        public void Trace(IScriptExtent extent, ScriptBlock scriptBlock, int level)
+        public void Trace(IScriptExtent extent, ScriptBlock scriptBlock, int level, string functionName, string moduleName)
         {
             var timestampRaw = Stopwatch.GetTimestamp();
             // usually 1 on Windows Desktop, 100 on *nix, but can be anything on some server systems like some Windows Server 2016
@@ -78,6 +79,9 @@ namespace Profiler
                 StartOffset = extent.StartOffset,
                 EndOffset = extent.EndOffset,
             };
+
+            _previousHit.Module = moduleName;
+            _previousHit.Function = functionName != ScriptBlockName ? functionName : null;
             _previousHit.Level = level;
 
             _index++;

@@ -6,7 +6,6 @@ namespace Profiler
     /// Measure-ScriptBlock output type.
     /// </summary>
     public struct Hit
-
     {
         /// <summary>
         /// StartTime of event.
@@ -60,6 +59,21 @@ namespace Profiler
         public string Text => Extent.Text;
         public long Timestamp => StartTime.Ticks;
 
+        public string Group;
+
+        /// <summary>
+        /// The function name that is on top of stack.
+        /// </summary>
+        public string Function;
+
+        /// <summary>
+        /// The module name where that function is coming from.
+        /// </summary>
+        public string Module;
+
+        /// <summary>
+        /// How deep we are in the call stack.
+        /// </summary>
         public int Level;
 
         public Flow Flow;
@@ -68,5 +82,7 @@ namespace Profiler
         public int ReturnIndex;
         // who called us
         public int CallerIndex;
+
+        public bool Folded;
     }
 }

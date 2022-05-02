@@ -4,7 +4,6 @@
     /// Represents a span of text in a script.
     /// </summary>
     public struct ScriptExtent
-
     {
         /// <summary>
         /// The filename the extent includes, or null if the extent is not included in any file.

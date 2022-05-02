@@ -94,6 +94,11 @@ namespace Profiler.SpeedScope
 
             foreach (var @event in events)
             {
+                if (@event.Folded)
+                {
+                    continue;
+                }
+
                 if (@event.Level == 0)
                 {
                     // skip events that we produce directly from Profiler
@@ -128,7 +133,14 @@ namespace Profiler.SpeedScope
                         int callerIndex = 0;
                         if (flow == Flow.Return)
                         {
-                            callerIndex = callStack.Pop();
+                            try
+                            {
+                                callerIndex = callStack.Pop();
+                            }
+                            catch(InvalidOperationException ex)
+                            {
+                                throw new InvalidOperationException($"Tried to pop call stack for event {@event.Index}, but the stack is empty.", ex);
+                            }
                         }
 
                         // when we return we need to use the Text of who called us, because otherwise the event points to a different frame name
@@ -137,7 +149,20 @@ namespace Profiler.SpeedScope
                         // This shows every line, with path, but we should probably rather fold into functions
                         // var fileMarker = keyEvent.IsInFile ? $"|{keyEvent.Path}:{keyEvent.Line}" : null;
                         // var key = $"{keyEvent.Text}{fileMarker}";
-                        var key = keyEvent.Text;
+                        string key;
+
+                        if (keyEvent.Group != null)
+                        {
+                            key = keyEvent.Group;
+                        }
+                        else
+                        {
+                            key = keyEvent.Function != null ? keyEvent.Function : keyEvent.Text;
+                            if (key == "{" || key == "}")
+                            {
+                                key = key + "|" + keyEvent.Path;
+                            }
+                        }
 
                         if (!frameDictionary.TryGetValue(key, out index))
                         {
