@@ -155,6 +155,8 @@ function Trace-Script {
     $fileMap = [Profiler.Profiler]::ProcessLines($trace, $scriptBlocks, $false)
     Write-TimeAndRestart $sw
 
+    $global:functionMap = [Profiler.Profiler]::ProcessFunctions($trace)
+
     # trace starts with event from the measurement script where we enable tracing and ends with event where we disable it
     # events are timestamped at the start so user code duration is from the second event (index 1), till the last real event (index -2) where we disable tracing
     $total = if ($null -ne $trace -and 0 -lt @($trace).Count) { [TimeSpan]::FromTicks($trace[-2].Timestamp - $trace[2].Timestamp) } else { [TimeSpan]::Zero }
@@ -162,10 +164,9 @@ function Trace-Script {
     Write-Host -ForegroundColor Magenta "Counting averages and percentages." -NoNewline
     # this is like SelectMany, it lists all the lines in all files into a single array
     $all = foreach ($line in $fileMap.Values.Lines.Values) {
-        $line.SelfAverage = if ($line.HitCount -eq 0) { [TimeSpan]::Zero } else { [TimeSpan]::FromTicks($line.SelfDuration.Ticks / $line.HitCount) }
-        $line.Average = if ($line.HitCount -eq 0) { [TimeSpan]::Zero } else { [TimeSpan]::FromTicks($line.Duration.Ticks / $line.HitCount) }
         $ticks = if (0 -ne $total.Ticks) { $total.Ticks } else { 1 }
         $line.Percent = [Math]::Round($line.Duration.Ticks / $ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
+        $line.SelfPercent = [Math]::Round($line.SelfDuration.Ticks / $ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
         $line
     }
     Write-TimeAndRestart $sw
@@ -177,24 +178,10 @@ function Trace-Script {
     Select-Object -First 50
     Write-TimeAndRestart $sw
 
-    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest average Duration." -NoNewline
-    $top50Average = $all |
-    Where-Object Average -gt 0 |
-    Sort-Object -Property Average -Descending |
-    Select-Object -First 50
-    Write-TimeAndRestart $sw
-
     Write-Host -ForegroundColor Magenta "Getting Top50 with the longest SelfDuration." -NoNewline
     $top50SelfDuration = $all |
     Where-Object SelfDuration -gt 0 |
     Sort-Object -Property SelfDuration -Descending |
-    Select-Object -First 50
-    Write-TimeAndRestart $sw
-
-    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest average SelfDuration." -NoNewline
-    $top50SelfAverage = $all |
-    Where-Object SelfAverage -gt 0 |
-    Sort-Object -Property SelfAverage -Descending |
     Select-Object -First 50
     Write-TimeAndRestart $sw
 
@@ -220,10 +207,8 @@ function Trace-Script {
     $script:processedTrace.Events = $trace
     $script:processedTrace.AllLines = $all
     $script:processedTrace.Top50Duration = $top50Duration
-    $script:processedTrace.Top50Average = $top50Average
     $script:processedTrace.Top50HitCount = $top50HitCount
     $script:processedTrace.Top50SelfDuration = $top50SelfDuration
-    $script:processedTrace.Top50SelfAverage = $top50SelfAverage
 
     $script:processedTrace
 
@@ -279,7 +264,7 @@ function Trace-Script {
         Export-SpeedScope -Trace $script:processedTrace -Path $ExportPath
     }
 
-    Write-Host -ForegroundColor Magenta "Done. Try $(if ($variable) { "$($variable)" } else { '$yourVariable' }).Top50Duration | Format-Table to get the report. There are also Top50Average, Top50SelfDuration, Top50SelfAverage, Top50HitCount, AllLines and Events."
+    Write-Host -ForegroundColor Magenta "Done. Try $(if ($variable) { "$($variable)" } else { '$yourVariable' }).Top50SelfDuration | Format-Table to get the report. There are also Top50Duration, Top50HitCount, AllLines and Events."
 }
 
 function Get-LatestTrace {
