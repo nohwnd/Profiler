@@ -3,7 +3,6 @@ using System.Management.Automation;
 using System.Management.Automation.Host;
 using System.Management.Automation.Language;
 using System.Reflection;
-using System.Threading;
 using NonGeneric = System.Collections;
 
 namespace Profiler
@@ -34,7 +33,8 @@ namespace Profiler
             if (HasTracer2)
                 throw new InvalidOperationException("Tracer2 is already present.");
 
-            _tracer2 = new ExternalTracerAdapter(tracer) ?? throw new ArgumentNullException(nameof(tracer));
+            // use tracer directly if it implements our interface, or wrap it in adapter, and call it's methods by reflection, to accomodate tracers that only match our signature but not type.
+            _tracer2 = tracer is ITracer ourTracerType ? ourTracerType : new ExternalTracerAdapter(tracer) ?? throw new ArgumentNullException(nameof(tracer));
             TraceLine(justTracer2: true);
         }
 

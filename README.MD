@@ -11,11 +11,23 @@ Install-Module Profiler
 ```
 
 ```powershell
-$trace =  Trace-Script -ScriptBlock { & "demo-scripts/MyScript.ps1" }
-$trace.Top50Duration | Format-Table
+$trace =  Trace-Script -ScriptBlock { & "demo-scripts/Get-Icons.ps1" } -ExportPath icons
+$trace.Top50SelfDuration | Format-Table
 ```
 
 ![](images/Profile.jpg)
+
+Inspect the output, SelfPercent, and SelfDuration represent time that is spent only in the function, excluding all the code it calls. 
+
+Percent and Duration represent time that is takes by the function an all the code it calls.
+
+In our screenshot 98.6% of the execution time is taken by `Invoke-WebRequest`, which runs inside of `Get-EmojiInternal` function inside of `Avocado` module.
+
+You also specified export path which exports the results in https://speedscope.app format. Importing the file will show this result: 
+
+![](images/speedscope-time-order.jpg)
+
+Which shows us graphical representation of the run. We can see that two paths, `Get-Avocado` and `Get-Unicorn` both end up calling `Get-EmojiInternal` where most of the time in the script is spent.
 
 ## More Features 
 
