@@ -64,6 +64,16 @@ namespace Profiler
         public string Path { get; set; }
 
         /// <summary>
+        /// Average of duration for all hits.
+        /// </summary>
+        public TimeSpan Average { get; set; } = TimeSpan.Zero;
+
+        /// <summary>
+        /// Average of SelfDuration for all hits.
+        /// </summary>
+        public TimeSpan SelfAverage { get; set; } = TimeSpan.Zero;
+
+        /// <summary>
         /// Event records for all hits to the line.
         /// </summary>
         public ICollection<Hit> Hits { get; set; } = new List<Hit>();
