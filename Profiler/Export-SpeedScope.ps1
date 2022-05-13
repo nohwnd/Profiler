@@ -23,7 +23,7 @@ function Export-SpeedScope {
             }
         }
         else {
-            if ([IO.Path]::EndsInDirectorySeparator($fullPath)) {
+            if ($fullPath.EndsWith("\") -or $fullPath.EndsWith("/")) {
                 # the path ends in \ or / which means we are given a directory, get the next name
                 Get-NextName -Path $fullPath
             }

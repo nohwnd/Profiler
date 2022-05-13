@@ -9,14 +9,26 @@ namespace Profiler
     public class LineProfile
     {
         /// <summary>
-        /// Percent of total duration used by line and all the code it calls.
+        /// Percent of total duration used by line including all the code it calls.
         /// </summary>
         public double Percent { get; set; } = 0.00;
 
         /// <summary>
-        /// Percent of total duration used by line.
+        /// Time used by line including subcalls.
+        /// </summary>
+        public TimeSpan Duration { get; set; } = TimeSpan.Zero;
+
+
+        /// <summary>
+        /// Percent of total duration used by line, excluding the code it calls.
         /// </summary>
         public double SelfPercent { get; set; } = 0.00;
+
+        /// <summary>
+        /// Time used exclusively by this line.
+        /// </summary>
+        public TimeSpan SelfDuration { get; set; } = TimeSpan.Zero;
+
 
         /// <summary>
         /// Number of hits on line.
@@ -24,19 +36,9 @@ namespace Profiler
         public uint HitCount { get; set; } = 0;
 
         /// <summary>
-        /// Time used by line including subcalls.
-        /// </summary>
-        public TimeSpan Duration { get; set; } = TimeSpan.Zero;
-
-        /// <summary>
-        /// Time used exclusively by this line.
-        /// </summary>
-        public TimeSpan SelfDuration { get; set; } = TimeSpan.Zero;
-
-        /// <summary>
         /// Name of file or id of scriptblock the line belongs to.
         /// </summary>
-        public string Name { get; set; }
+        public string File { get; set; }
 
         /// <summary>
         /// Line number in the file or scriptblock.
@@ -62,16 +64,6 @@ namespace Profiler
         /// Absolute path of file or id of scriptblock the line belongs to.
         /// </summary>
         public string Path { get; set; }
-
-        /// <summary>
-        /// Average of duration for all hits.
-        /// </summary>
-        public TimeSpan Average { get; set; } = TimeSpan.Zero;
-
-        /// <summary>
-        /// Average of SelfDuration for all hits.
-        /// </summary>
-        public TimeSpan SelfAverage { get; set; } = TimeSpan.Zero;
 
         /// <summary>
         /// Event records for all hits to the line.

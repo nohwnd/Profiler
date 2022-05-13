@@ -210,7 +210,7 @@ namespace Profiler
                 {
                     lineProfile = new LineProfile
                     {
-                        Name = hit.Path,
+                        File = hit.Path,
                         Line = 0,
                         Text = hit.Function,
                         Function = hit.Function,
@@ -353,7 +353,7 @@ namespace Profiler
 
                     lineProfile = new LineProfile
                     {
-                        Name = file.Name,
+                        File = file.Name,
                         Line = (uint)lineNumber,
                         Text = text,
                         Function = hit.Function,
