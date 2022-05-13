@@ -5,6 +5,7 @@
     in unbound scriptblocks, but if we just skip them we don't need it.-->  
   <PropertyGroup Condition=" '$(PowerShellVersion)' == '' ">
     <TargetFrameworks>netstandard2.0;net452;net451</TargetFrameworks>
+	<LangVersion>Latest</LangVersion>
   </PropertyGroup>
   
  <PropertyGroup Condition=" '$(TargetFramework)' == 'net451' ">
