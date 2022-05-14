@@ -107,6 +107,12 @@ function Trace-Script {
     .PARAMETER After
     When using -Flag. Force all flags to be set to the values provided in the -Flag hashtable.
     When both -Before and -After are enabled, -After is used.
+
+    .PARAMETER ExportPath
+    Export to a json file using speedscope.app format. Export is always written into a file with .speedscope.json
+    extension. You can provide or omit it. 
+    Providing a path ending with \ or / will consider it a directory and use the default name. 
+    Providing <id> in the name will substitute it with a numeric id to easily generate new file for each run of Trace-Script.
     #>
 
     [CmdletBinding()]
@@ -146,22 +152,20 @@ function Trace-Script {
     $trace = [Profiler.Profiler]::ProcessFlow($trace)
     Write-TimeAndRestart $sw
 
-    Write-Host -ForegroundColor Magenta "Grouping and folding." -NoNewline
-    $sw = [Diagnostics.Stopwatch]::StartNew()
-    $trace = [Profiler.Profiler]::ProcessGroupAndFold($trace)
-    Write-TimeAndRestart $sw
+    # Write-Host -ForegroundColor Magenta "Grouping and folding." -NoNewline
+    # $sw = [Diagnostics.Stopwatch]::StartNew()
+    # $trace = [Profiler.Profiler]::ProcessGroupAndFold($trace)
+    # Write-TimeAndRestart $sw
 
     Write-Host -ForegroundColor Magenta "Sorting events into lines." -NoNewline
     $fileMap = [Profiler.Profiler]::ProcessLines($trace, $scriptBlocks, $false)
     Write-TimeAndRestart $sw
 
-    $global:functionMap = [Profiler.Profiler]::ProcessFunctions($trace)
-
     # trace starts with event from the measurement script where we enable tracing and ends with event where we disable it
     # events are timestamped at the start so user code duration is from the second event (index 1), till the last real event (index -2) where we disable tracing
     $total = if ($null -ne $trace -and 0 -lt @($trace).Count) { [TimeSpan]::FromTicks($trace[-2].Timestamp - $trace[2].Timestamp) } else { [TimeSpan]::Zero }
 
-    Write-Host -ForegroundColor Magenta "Counting averages and percentages." -NoNewline
+    Write-Host -ForegroundColor Magenta "Counting averages and percentages for lines." -NoNewline
     # this is like SelectMany, it lists all the lines in all files into a single array
     $all = foreach ($line in $fileMap.Values.Lines.Values) {
         $ticks = if (0 -ne $total.Ticks) { $total.Ticks } else { 1 }
@@ -171,25 +175,66 @@ function Trace-Script {
     }
     Write-TimeAndRestart $sw
 
-    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest Duration." -NoNewline
+    Write-Host -ForegroundColor Magenta "Sorting events into functions." -NoNewline
+    $functionMap = [Profiler.Profiler]::ProcessFunctions($trace)
+    Write-TimeAndRestart $sw
+
+    Write-Host -ForegroundColor Magenta "Counting averages and percentages for functions." -NoNewline
+    $allFunctions = foreach ($function in $functionMap.Values) {
+        $ticks = if (0 -ne $total.Ticks) { $total.Ticks } else { 1 }
+        $function.Percent = [Math]::Round($function.Duration.Ticks / $ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
+        $function.SelfPercent = [Math]::Round($function.SelfDuration.Ticks / $ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
+        $function
+    }
+    Write-TimeAndRestart $sw
+
+    Write-Host -ForegroundColor Magenta "Getting Top50 lines with the longest Duration." -NoNewline
     $top50Duration = $all |
     Where-Object Duration -gt 0 |
     Sort-Object -Property Duration -Descending |
-    Select-Object -First 50
+    Select-Object -First 50 | 
+    ForEach-Object { [Profiler.DurationView]::new($_) }
     Write-TimeAndRestart $sw
 
-    Write-Host -ForegroundColor Magenta "Getting Top50 with the longest SelfDuration." -NoNewline
+    Write-Host -ForegroundColor Magenta "Getting Top50 lines with the longest SelfDuration." -NoNewline
     $top50SelfDuration = $all |
     Where-Object SelfDuration -gt 0 |
     Sort-Object -Property SelfDuration -Descending |
-    Select-Object -First 50
+    Select-Object -First 50 | 
+    ForEach-Object { [Profiler.SelfDurationView]::new($_) }
     Write-TimeAndRestart $sw
 
-    Write-Host -ForegroundColor Magenta "Getting Top50 with the most hits." -NoNewline
+    Write-Host -ForegroundColor Magenta "Getting Top50 lines with the most hits." -NoNewline
     $top50HitCount = $all |
     Where-Object HitCount -gt 0 |
     Sort-Object -Property HitCount -Descending |
-    Select-Object -First 50
+    Select-Object -First 50 |
+    ForEach-Object { [Profiler.HitCountView]::new($_) }
+    Write-TimeAndRestart $sw
+
+
+    Write-Host -ForegroundColor Magenta "Getting Top50 functions with the longest Duration." -NoNewline
+    $top50FunctionDuration = $allFunctions |
+    Where-Object Duration -gt 0 |
+    Sort-Object -Property Duration -Descending |
+    Select-Object -First 50 |
+    ForEach-Object { [Profiler.FunctionDurationView]::new($_) }
+    Write-TimeAndRestart $sw
+
+    Write-Host -ForegroundColor Magenta "Getting Top50 functions with the longest SelfDuration." -NoNewline
+    $top50FunctionSelfDuration = $allFunctions |
+    Where-Object SelfDuration -gt 0 |
+    Sort-Object -Property SelfDuration -Descending |
+    Select-Object -First 50 | 
+    ForEach-Object { [Profiler.FunctionSelfDurationView]::new($_) }
+    Write-TimeAndRestart $sw
+
+    Write-Host -ForegroundColor Magenta "Getting Top50 functions with the most hits." -NoNewline
+    $top50FunctionHitCount = $allFunctions |
+    Where-Object HitCount -gt 0 |
+    Sort-Object -Property HitCount -Descending |
+    Select-Object -First 50 | 
+    ForEach-Object { [Profiler.FunctionHitCountView]::new($_) }
     Write-TimeAndRestart $sw
 
     # do not use object initializer syntax here @{}
@@ -209,6 +254,9 @@ function Trace-Script {
     $script:processedTrace.Top50Duration = $top50Duration
     $script:processedTrace.Top50HitCount = $top50HitCount
     $script:processedTrace.Top50SelfDuration = $top50SelfDuration
+    $script:processedTrace.Top50FunctionDuration = $top50FunctionDuration
+    $script:processedTrace.Top50FunctionHitCount = $top50FunctionHitCount
+    $script:processedTrace.Top50FunctionSelfDuration = $top50FunctionSelfDuration
 
     $script:processedTrace
 
@@ -264,7 +312,7 @@ function Trace-Script {
         Export-SpeedScope -Trace $script:processedTrace -Path $ExportPath
     }
 
-    Write-Host -ForegroundColor Magenta "Done. Try $(if ($variable) { "$($variable)" } else { '$yourVariable' }).Top50SelfDuration | Format-Table to get the report. There are also Top50Duration, Top50HitCount, AllLines and Events."
+    Write-Host -ForegroundColor Magenta "Done. Try $(if ($variable) { "$($variable)" } else { '$yourVariable' }).Top50SelfDuration | Format-Table to get the report. There are also Top50Duration, Top50HitCount, Top50FunctionSelfDuration, Top50FunctionDuration, Top50FunctionHitCount AllLines and Events."
 }
 
 function Get-LatestTrace {
