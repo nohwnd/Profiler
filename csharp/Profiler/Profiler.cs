@@ -211,7 +211,6 @@ namespace Profiler
                     lineProfile = new LineProfile
                     {
                         File = hit.Path,
-                        Line = 0,
                         Text = hit.Function,
                         Function = hit.Function,
                         Module = hit.Module,
