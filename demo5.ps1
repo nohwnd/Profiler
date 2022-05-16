@@ -17,7 +17,7 @@ $sb = {
 }
 
 
-Import-Module $PSScriptRoot/Profiler/Profiler.psm1 -Force
+Import-Module $PSScriptRoot/Profiler/Profiler.psd1 -Force
 
 $trace = Trace-Script $sb -Preheat 0
 

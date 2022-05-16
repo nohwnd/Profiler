@@ -1,6 +1,6 @@
 ## Profiling a script
 
-Import-Module $PSScriptRoot/Profiler/Profiler.psm1 -Force
+Import-Module $PSScriptRoot/Profiler/Profiler.psd1 -Force
 
 $trace =  Trace-Script -ScriptBlock { & "$PSScriptRoot/demo-scripts/Get-Icons.ps1" } -ExportPath emojis.speedscope.json
 

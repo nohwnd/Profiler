@@ -1,6 +1,6 @@
 ## Improving performance
 
-Import-Module $PSScriptRoot/Profiler/Profiler.psm1 -Force
+Import-Module $PSScriptRoot/Profiler/Profiler.psd1 -Force
 
 # This is the script to be profiled. Provide a path to script, and provide
 # parameters if you need them. You can also profile any other code. Like 
