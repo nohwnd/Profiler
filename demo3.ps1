@@ -15,7 +15,7 @@ function a () {
 c
 
 ## Duration per-line and per itself, and finding what was slow
-Import-Module $PSScriptRoot/Profiler/Profiler.psm1 -Force
+Import-Module $PSScriptRoot/Profiler/Profiler.psd1 -Force
 
 # Runs the script
 $trace = Trace-Script { & "$PSScriptRoot/demo-scripts/SleepyScript.ps1" }
