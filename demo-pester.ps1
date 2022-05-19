@@ -6,10 +6,10 @@ Import-Module $PSScriptRoot/Profiler/Profiler.psd1 -Force
 $sb = {
         ${global:function:Set-PSBreakpoint} = {}
         ${global:function:Get-PSBreakpoint} = {}
-        /p/pester/test.ps1 -SkipPTests
+        c:\p/pester/test.ps1 -SkipPTests
 }
 
 
-$trace = Trace-Script $sb -Preheat 0
+$trace = Trace-Script $sb -Preheat 0 -ExportPath pester
 
   # $trace.Top50Duration | Format-Table 

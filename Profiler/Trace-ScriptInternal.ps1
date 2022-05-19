@@ -18,7 +18,7 @@ function Trace-ScriptInternal {
 
     Assert-PowerShellVersion
 
-    Write-Host -ForegroundColor Magenta "Running in PowerShell $($PSVersionTable.PSVersion)."
+    Write-Host -ForegroundColor Magenta "Running in PowerShell $($PSVersionTable.PSVersion) $([System.IntPtr]::Size*8)-bit."
 
     if (0 -ge $Preheat) {
         $Preheat = 0
@@ -74,14 +74,15 @@ function Trace-ScriptInternal {
     }
 
     $out.Stopwatch = $result.Stopwatch
+    $out.ScriptBlocks = $result.ScriptBlocks
     $trace = $result.Trace
     Write-Host -Foreground Magenta "Tracing done. Got $($trace.Count) trace events."
     if ($UseNativePowerShell7Profiler) {
-        $normalizedTrace = [Collections.Generic.List[Profiler.ProfileEventRecord]]::new($trace.Count)
+        $normalizedTrace = [Collections.Generic.List[Profiler.Hit]]::new($trace.Count)
         Write-Host "Used native tracer from PowerShell 7. Normalizing trace."
         foreach ($t in $trace) { 
-            $r = [Profiler.ProfileEventRecord]::new()
-            $e = [Profiler.ScriptExtentEventData]::new()
+            $r = [Profiler.Hit]::new()
+            $e = [Profiler.ScriptExtent]::new()
             $e.File = $t.Extent.File
             $e.StartLineNumber = $t.Extent.StartLineNumber
             $e.StartColumnNumber = $t.Extent.StartColumnNumber
@@ -103,60 +104,92 @@ function Trace-ScriptInternal {
         $normalizedTrace
     }
     else { 
-       $trace
+        $trace
     }
 }
 
 function Measure-ScriptHarmony ($ScriptBlock) {
-    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    
+    $tracer = [Profiler.ProfilerTracer]::new()
+
+    if (-not [Profiler.Tracer]::IsEnabled) {
+        # use this as a marker of position, scriptblocks are aware of the current line, so we can use it to 
+        # make this code not rely on exact line numbers
+        $here = {}
+        # add a dummy breakpoint and disable it, otherwise when someone calls Remove-PSBreakpoint and there are 
+        # no breakpoints left the debugger will disable itself. This could also be solved by adding global function
+        # that is generated as a proxy for Remove-PSBreakpoint and re-enables Set-PSDebug -Trace 1. That would 
+        # be more resilient to users who can remove all breakpoints including ours. But we would have to generate it
+        # and modify the code, and it would look weird in their code output. On the other hand we would not show up extra 
+        # breakpoint in VSCode (or other editor)
+        $bp = Set-PSBreakpoint -Script $PSCommandPath -Line $here.StartPosition.StartLine -Action {}
+        $null = $bp | Disable-PSBreakpoint
+    }
+
+    $sw = [System.Diagnostics.Stopwatch]::new()
     try {
-        # ensure all output to pipeline is dumped
-        $null = & {
-            try {
-                # use this as a marker of position, scriptblocks are aware of the current line, so we can use it to 
-                # make this code not rely on exact line numbers
-                $here = {}
-                # add a dummy breakpoint and disable it, otherwise when someone calls Remove-PSBreakpoint and there are 
-                # no breakpoints left the debugger will disable itself. This could also be solved by adding global function
-                # that is generated as a proxy for Remove-PSBreakpoint and re-enables Set-PSDebug -Trace 1. That would 
-                # be more resilient to users who can remove all breakpoints including ours. But we would have to generate it
-                # and modify the code, and it would look weird in their code output. On the other hand we would not show up extra 
-                # breakpoint in VSCode (or other editor)
-                $bp = Set-PSBreakpoint -Script $PSCommandPath -Line $here.StartPosition.StartLine -Action {}
-                $bp | Disable-PSBreakpoint
-                [Profiler.Tracer]::Patch($PSVersionTable.PSVersion.Major, $ExecutionContext, $host.UI)
-                Set-PSDebug -Trace 1
-                & $ScriptBlock
-            } 
-            finally {
-                Set-PSDebug -Trace 0
-                [Profiler.Tracer]::Unpatch()
+        try {
+            if (-not [Profiler.Tracer]::IsEnabled) {
+                $null = [Profiler.Tracer]::Patch($PSVersionTable.PSVersion.Major, $ExecutionContext, $host.UI, $tracer)
+            }
+            else { 
+                # just add second tracer to the existing setup
+                $null = [Profiler.Tracer]::Register($tracer)
+            }
+
+            $sw.Start();
+            $null = Set-PSDebug -Trace 1
+            $null = & $ScriptBlock
+        }
+        finally { 
+            # disable tracing in any case because we don't want too many internal 
+            # details to leak into the log, otherwise any change in this code will 
+            # reflect into the log and we need to change counts in Profiler
+            $null = Set-PSDebug -Trace 0
+            $sw.Stop()
+            if ([Profiler.Tracer]::HasTracer2) {
+                $null = [Profiler.Tracer]::Unregister()
+                # re-enable tracing because tracer 1 still needs to continue tracing
+                $null = Set-PSDebug -Trace 1
+            }
+            else { 
+                $null = [Profiler.Tracer]::Unpatch()
+
                 if ($bp) { 
-                    $bp | Remove-PSBreakPoint
+                    $null = $bp | Remove-PSBreakPoint
                 }
             }
         }
-    }
+    } 
     catch {
         $err = $_
     }
-    $sw.Stop()
+
+
 
     $result = @{
-        Trace = [Profiler.Tracer]::Hits
-        Error = $err
-        Stopwatch = $sw.Elapsed
+        Trace        = $tracer.Hits
+        ScriptBlocks = $tracer.ScriptBlocks
+        Error        = $err
+        Stopwatch    = $sw.Elapsed
     }
 
     if ($null -eq $result.Trace -or 0 -eq @($result.Trace).Count) { 
-        throw "Trace is null or empty."
+        throw "Trace is null or empty. $(if ($null -ne $err) { "There was an error: $err."})"
+    }
+
+    $firstLine = $result.Trace[0]
+    $enableCommand = '$null = [Profiler.Tracer]::Patch($PSVersionTable.PSVersion.Major, $ExecutionContext, $host.UI, $tracer)'
+    $registerCommand = '$null = [Profiler.Tracer]::Register($tracer)'
+    if (-not ($PSCommandPath -eq $firstLine.Path -and ($enableCommand -eq $firstLine.Text -or $registerCommand -eq $firstLine.Text))) { 
+        Write-Warning "Event list is incomplete, it should start with '$enableCommand' or '$registerCommand' from within Profiler module, but instead starts with entry '$($firstLine.Text)', from '$($firstLine.Path)'. Are you running profiler in the code you are profiling?"
     }
 
     $lastLine = $result.Trace[-1]
-
-    $disableCommand = "[Profiler.Tracer]::Unpatch()"
-    if ($PSCommandPath -ne $lastLine.Path -or $disableCommand -ne $lastLine.Text) { 
-        Write-Warning "Event list is incomplete, it should end with '$disableCommand' from within Profiler module, but instead ends with entry '$($lastLine.Text)', from '$($lastLine.Path)'. Are you disabling trace mode in your code using Set-PSDebug -Trace 0 or using Remove-PSBreakpoint?"
+    $disableCommand = '$null = [Profiler.Tracer]::Unpatch()'
+    $unregisterCommand = '$null = [Profiler.Tracer]::Unregister()'
+    if (-not ($PSCommandPath -eq $lastLine.Path -and ($disableCommand -eq $lastLine.Text -or $unregisterCommand -eq $lastLine.Text))) { 
+        Write-Warning "Event list is incomplete, it should end with '$disableCommand' or '$unregisterCommand' from within Profiler module, but instead ends with entry '$($lastLine.Text)', from '$($lastLine.Path)'. Are you disabling trace mode in your code using Set-PSDebug -Trace 0 or using Remove-PSBreakpoint to remove all breakpoints?"
     }
 
     $result

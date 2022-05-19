@@ -2,11 +2,10 @@
 
 namespace Profiler
 {
-
     /// <summary>
     /// Measure-ScriptBlock output type.
     /// </summary>
-    public struct ProfileEventRecord
+    public struct Hit
     {
         /// <summary>
         /// StartTime of event.
@@ -27,7 +26,7 @@ namespace Profiler
         /// <summary>
         /// Script Extent.
         /// </summary>
-        public ScriptExtentEventData Extent;
+        public ScriptExtent Extent;
 
         /// <summary>
         /// Unique identifer of the runspace.
@@ -45,7 +44,7 @@ namespace Profiler
         public Guid ScriptBlockId;
 
         // profiler specific fields
-        public long Index;
+        public int Index;
         public TimeSpan Overhead;
 
         // extent file might be empty when we are in unsaves scriptblock
@@ -60,20 +59,30 @@ namespace Profiler
         public string Text => Extent.Text;
         public long Timestamp => StartTime.Ticks;
 
+        public string Group;
+
+        /// <summary>
+        /// The function name that is on top of stack.
+        /// </summary>
+        public string Function;
+
+        /// <summary>
+        /// The module name where that function is coming from.
+        /// </summary>
+        public string Module;
+
+        /// <summary>
+        /// How deep we are in the call stack.
+        /// </summary>
         public int Level;
 
-        public CallReturnProcess Flow;
+        public Flow Flow;
 
         // where we returned if we are a call, otherwise our own index
         public int ReturnIndex;
         // who called us
         public int CallerIndex;
-    }
 
-    public enum CallReturnProcess
-    {
-        Call = 0,
-        Return,
-        Process
+        public bool Folded;
     }
 }

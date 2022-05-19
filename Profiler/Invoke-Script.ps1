@@ -103,7 +103,7 @@ function Invoke-Script {
 
     Assert-PowerShellVersion
 
-    Write-Host -ForegroundColor Magenta "Running in PowerShell $($PSVersionTable.PSVersion)."
+    Write-Host -ForegroundColor Magenta "Running in PowerShell $($PSVersionTable.PSVersion) $([System.IntPtr]::Size*8)-bit."
     if ($Flag) {
         Write-Host -ForegroundColor Magenta "Flags for After runs:"
         foreach ($f in $Flag.GetEnumerator()) {

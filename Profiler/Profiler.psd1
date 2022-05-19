@@ -8,7 +8,7 @@
 RootModule = 'Profiler.psm1'
 
 # Version number of this module.
-ModuleVersion = '3.0.0'
+ModuleVersion = '4.0.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -59,7 +59,7 @@ ScriptsToProcess = @()
 TypesToProcess = @()
 
 # Format files (.ps1xml) to be loaded when importing this module
-FormatsToProcess = @('Profiler.format.ps1xml')
+FormatsToProcess = @('Profiler.Format.ps1xml')
 
 # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
 NestedModules = @()
@@ -111,7 +111,7 @@ PrivateData = @{
         # ReleaseNotes = ''
 
         # Prerelease string of this module
-        Prerelease = ''
+        Prerelease = 'beta2'
 
         # Flag to indicate whether the module requires explicit user acceptance for install/update/save
         # RequireLicenseAcceptance = $false

@@ -11,11 +11,23 @@ Install-Module Profiler
 ```
 
 ```powershell
-$trace =  Trace-Script -ScriptBlock { & "demo-scripts/MyScript.ps1" }
-$trace.Top50Duration | Format-Table
+$trace =  Trace-Script -ScriptBlock { & "demo-scripts/Get-Icons.ps1" } -ExportPath icons
+$trace.Top50SelfDuration | Format-Table
 ```
 
 ![](images/Profile.jpg)
+
+Inspect the output, SelfPercent, and SelfDuration represent time that is spent only in the function, excluding all the code it calls. 
+
+Percent and Duration represent time that is takes by the function an all the code it calls.
+
+In our screenshot 98.6% of the execution time is taken by `Invoke-WebRequest`, which runs inside of `Get-EmojiInternal` function inside of `Avocado` module.
+
+You also specified export path which exports the results in https://speedscope.app format. Importing the file will show this result: 
+
+![](images/speedscope-time-order.jpg)
+
+Which shows us graphical representation of the run. We can see that two paths, `Get-Avocado` and `Get-Unicorn` both end up calling `Get-EmojiInternal` where most of the time in the script is spent.
 
 ## More Features 
 
@@ -78,14 +90,16 @@ Running profiling multiple times in a row keeps the previous times to show you y
 Original prototype of this module is demoed [here on Youtube](https://www.youtube.com/watch?v=qLjDjm-nvLQ) The commands were renamed, but the way you can work with the resulting trace remained the same.
 
 
-## Knows issues:
+## Know limitations:
 
-This module is under heavy development, it should stabilize soon because I will start writing tests. Here are some limitations of my current desing that I know how to fix, I just did not have time to do it yet:
+This module is under heavy development. Here are some limitations of my current desing that I know how to fix, but that are not high on priority list:
 
-- Files that are detected but don't exist anymore are skipped during the trace processing.
-- This includes unsaved files in VSCode.
-- Unbound scriptblocks cause null reference exceptions in the trace processing. 
-- Lines of internal code from the module may appear in the overview of the execution.
+- Using Set-PSDebug -Off, or Set-PSDebug -Trace 0 stops the tracing, because that is what we internally use to enable and disable it. If this is a must for you let me know in issues.
+
+- Removing all breakpoints from the current session stops tracing. We add a synthetic breakpoint to prevent this, but if your code needs to remove all breakpoints, including the ones that are not "your own" let me know in issues.
+
+
+
 
 
 
