@@ -312,7 +312,7 @@ function Trace-Script {
         Export-SpeedScope -Trace $script:processedTrace -Path $ExportPath
     }
 
-    Write-Host -ForegroundColor Magenta "Done. Try $(if ($variable) { "$($variable)" } else { '$yourVariable' }).Top50SelfDuration | Format-Table to get the report. There are also Top50Duration, Top50HitCount, Top50FunctionSelfDuration, Top50FunctionDuration, Top50FunctionHitCount AllLines and Events."
+    Write-Host -ForegroundColor Magenta "Done. Try $(if ($variable) { "$($variable)" } else { '$yourVariable' }).Top50SelfDuration to get the report. There are also Top50Duration, Top50HitCount, Top50FunctionSelfDuration, Top50FunctionDuration, Top50FunctionHitCount AllLines and Events."
 }
 
 function Get-LatestTrace {
