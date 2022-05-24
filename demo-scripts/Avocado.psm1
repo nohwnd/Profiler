@@ -8,6 +8,7 @@ function Get-Unicorn {
 
 function Get-EmojiInternal ($Emoji) {
     $ProgressPreference = 'SilentlyContinue'
+
     $r = Invoke-WebRequest -Method GET -Uri "https://emojipedia.org/$($Emoji.ToLowerInvariant())/" -UseBasicParsing 
     if (200 -ne $r.StatusCode) { 
         throw "Error"
