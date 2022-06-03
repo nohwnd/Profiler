@@ -87,8 +87,7 @@ Running profiling multiple times in a row keeps the previous times to show you y
 
 ## DEMO:
 
-Original prototype of this module is demoed [here on Youtube](https://www.youtube.com/watch?v=qLjDjm-nvLQ) The commands were renamed, but the way you can work with the resulting trace remained the same.
-
+I presented on multiple occasions about Profiler, you can find the recordings [here on Youtube](https://youtube.com/playlist?list=PL_47l_1HjEMJfMMsYBLIY35T7eLOyJz3C), together with other talks about PowerShell performance.
 
 ## Know limitations:
 
