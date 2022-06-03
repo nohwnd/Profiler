@@ -8,7 +8,7 @@ See my Profiler talks [on Youtube](https://youtube.com/playlist?list=PL_47l_1HjE
 
 ## Quick start
 
-Install the module from PowerShell gallery: 
+Install the module [from PowerShell gallery](https://www.powershellgallery.com/packages/Profiler/): 
 
 ```powershell
 Install-Module Profiler
