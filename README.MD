@@ -2,6 +2,10 @@
 
 Script, ScriptBlock and module performance profiler for PowerShell 5, and PowerShell 7 that works in Windows, Linux and MacOS. 
 
+## Demo
+
+See my Profiler talks [on Youtube](https://youtube.com/playlist?list=PL_47l_1HjEMJfMMsYBLIY35T7eLOyJz3C), together with other people's talks about PowerShell performance.
+
 ## Quick start
 
 Install the module from PowerShell gallery: 
@@ -83,11 +87,6 @@ Running profiling multiple times in a row keeps the previous times to show you y
 ![](images/Progress.jpg)
 
 - And more, like breakdown of a given line (.CommandHits), seeing who called given line (.Hits) and seeing the call stack that lead to the current call. All of them just need to be documented first. 
-
-
-## DEMO:
-
-I presented on multiple occasions about Profiler, you can find the recordings [here on Youtube](https://youtube.com/playlist?list=PL_47l_1HjEMJfMMsYBLIY35T7eLOyJz3C), together with other talks about PowerShell performance.
 
 ## Know limitations:
 
