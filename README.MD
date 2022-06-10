@@ -56,18 +56,6 @@ Invoke-Script -ScriptBlock $scriptBlock -Preheat 0 -Repeat 3 -Flag $flag
 
 ![](images/Compare.jpg)
 
-- Look at a file or portion of a file
-
-```powershell
-# to see the whole file 
-$trace.Files[0].Profile | Format-Table
-
-# or to get first 10 lines 
-$trace.Files[0].Profile[0..9] | Format-Table
-```
-
-![](images/Profile.jpg)
-
 - Retrieve the last profile when you did not assign it to a variable 
 
 ```powershell 
