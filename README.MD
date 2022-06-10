@@ -16,7 +16,7 @@ Install-Module Profiler
 
 ```powershell
 $trace =  Trace-Script -ScriptBlock { & "demo-scripts/Get-Icons.ps1" } -ExportPath icons
-$trace.Top50SelfDuration | Format-Table
+$trace.Top50SelfDuration
 ```
 
 ![](images/Profile.jpg)
@@ -77,7 +77,7 @@ Invoke-Script -ScriptBlock $scriptBlock -Preheat 0 -Repeat 3 -Flag $flag
 # Looks like you did not assign the output to a variable. Use Get-LatestTrace to retrieve the trace, e.g.: $trace = Get-LatestTrace
 
 $trace = Get-LatestTrace
-$trace.Top50Duration | Format-Table
+$trace.Top50Duration
 ```
 
 - Progress of your changes

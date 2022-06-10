@@ -39,5 +39,9 @@ namespace Profiler
             SelfDuration = hit.SelfDuration;
             Text         = hit.Text;
         }
+
+        public override string ToString() {
+            return $"Profiler.CommandHit: Line={this.Line}; Column={this.Column}; HitCount={this.HitCount}; SelfDuration={this.SelfDuration}; Text='{this.Text}'";
+        }
     }
 }
