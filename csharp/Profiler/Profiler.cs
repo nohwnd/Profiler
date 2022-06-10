@@ -204,15 +204,15 @@ namespace Profiler
             {
                 var hit = trace[i];
 
-                var key = hit.Module + "|" + hit.Function;
+                var key = hit.Module + "|" + hit.Function + "|" + (hit.IsInFile ? hit.Path : hit.ScriptBlockId);
 
                 if (!functionMap.TryGetValue(key, out var lineProfile))
                 {
                     lineProfile = new LineProfile
                     {
                         File = hit.Path,
-                        Text = hit.Function,
-                        Function = hit.Function,
+                        Text = hit.Function ?? "<body>",
+                        Function = hit.Function ?? "<body>",
                         Module = hit.Module,
                         Path = hit.Path,
                     };
