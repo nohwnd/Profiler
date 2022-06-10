@@ -2,9 +2,7 @@
 
 Import-Module $PSScriptRoot/Profiler/Profiler.psd1 -Force
 
-$trace =  Trace-Script -ScriptBlock { 
-    
-    start-sleep -Seconds 4
+$trace =  Trace-Script -ScriptBlock {
     & "$PSScriptRoot/demo-scripts/Get-Icons.ps1" } -ExportPath emojis.speedscope.json
 
 # Shows the top 50 lines that take the most percent of the run by themselves
