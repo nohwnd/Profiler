@@ -76,11 +76,11 @@ Running profiling multiple times in a row keeps the previous times to show you y
 
 - And more, like breakdown of a given line (.CommandHits), seeing who called given line (.Hits) and seeing the call stack that lead to the current call. All of them just need to be documented first. 
 
-## Know limitations:
+## Known Limitations:
 
-This module is under heavy development. Here are some limitations of my current desing that I know how to fix, but that are not high on priority list:
+This module is under heavy development. Here are some limitations of my current design that I know how to fix, but that are not high on the priority list:
 
-- Using Set-PSDebug -Off, or Set-PSDebug -Trace 0 stops the tracing, because that is what we internally use to enable and disable it. If this is a must for you let me know in issues.
+- Using `Set-PSDebug -Off`, or `Set-PSDebug -Trace 0` stops the tracing, because that is what we internally use to enable and disable it. If this is a must for you let me know in issues.
 
 - Removing all breakpoints from the current session stops tracing. We add a synthetic breakpoint to prevent this, but if your code needs to remove all breakpoints, including the ones that are not "your own" let me know in issues.
 
