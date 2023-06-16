@@ -1,11 +1,46 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Tracing;
 using System.Management.Automation;
 using System.Management.Automation.Language;
 
 namespace Profiler
 {
+    [EventSource(Name = "Profiler")]
+    public class ProfilerEventSource : EventSource
+    {
+        private ProfilerEventSource() { }
+
+        public void WriteStart(int index, string functionName, string text)
+        {
+            WriteEvent(1, index, AsNonNull(functionName), Max100Chars(text));
+        }
+
+        public void WriteStop(int index, string functionName, string text)
+        {
+            WriteEvent(2, index, AsNonNull(functionName), Max100Chars(text));
+        }
+
+        public static ProfilerEventSource Log { get; } = new ProfilerEventSource();
+
+        private static string AsNonNull(string functionName)
+        {
+            return functionName ?? string.Empty;
+        }
+
+        private static string Max100Chars(string text)
+        {
+            text = AsNonNull(text);
+            if (text.Length > 100)
+            {
+                return text.Substring(0, 100);
+            }
+
+            return text;
+        }
+    }
+
     public class ProfilerTracer : ITracer
     {
         // timespan ticks are 10k per millisecond, but the stopwatch can have different resolution
@@ -41,8 +76,8 @@ namespace Profiler
             if (_index > 0)
             {
                 SetSelfDurationAndAddToHits(ref _previousHit, timestamp);
+                ProfilerEventSource.Log.WriteStop(_previousHit.Index, _previousHit.Function, _previousHit.Text);
             }
-
 
 #if !POWERSHELL3
             if (!ScriptBlocks.ContainsKey(scriptBlock.Id))
@@ -59,7 +94,6 @@ namespace Profiler
                 }
       }          
 #endif
-
             // overwrite the previous event because we already scraped it
             _previousHit = new Hit();
             _previousHit.StartTime = TimeSpan.FromTicks(timestamp);
@@ -85,6 +119,7 @@ namespace Profiler
             _previousHit.Level = level;
 
             _index++;
+            ProfilerEventSource.Log.WriteStart(_previousHit.Index, _previousHit.Function, _previousHit.Text);
         }
 
         private void SetSelfDurationAndAddToHits(ref Hit eventRecord, long timestamp)
