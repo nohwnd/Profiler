@@ -51,6 +51,8 @@ namespace Profiler
                             // events are timestamped at the start, so start of when we called until
                             // the next one after we returned is the duration of the whole call
                             call.Duration = TimeSpan.FromTicks(nextEvent.Timestamp - call.Timestamp);
+                            call.TotalBytes = nextEvent.AllocatedBytes - call.AllocatedBytes;
+                            call.TotalGc = (nextEvent.Gc0 + nextEvent.Gc1 + nextEvent.Gc2) - (call.Gc0 + call.Gc1 + call.Gc2);
                             // save into the call where it returned so we can see the events in the
                             // meantime and see what was actually slow
                             call.ReturnIndex = hit.Index;
@@ -62,6 +64,8 @@ namespace Profiler
                         // return from a function is not calling anything
                         // so the duration and self duration are the same
                         hit.Duration = hit.SelfDuration;
+                        hit.TotalBytes = hit.SelfAllocatedBytes;
+                        hit.TotalGc = hit.SelfGc0 + hit.SelfGc1 + hit.SelfGc2;
                         hit.ReturnIndex = hit.Index;
                         // who called us
                         hit.CallerIndex = caller;
@@ -73,6 +77,8 @@ namespace Profiler
                         // the duration is the selfduration
                         hit.Flow = Flow.Process;
                         hit.Duration = hit.SelfDuration;
+                        hit.TotalBytes = hit.SelfAllocatedBytes;
+                        hit.TotalGc = hit.SelfGc0 + hit.SelfGc1 + hit.SelfGc2;
                         hit.ReturnIndex = hit.Index;
 
                         // who called us
@@ -222,6 +228,8 @@ namespace Profiler
 
                 lineProfile.SelfDuration = lineProfile.SelfDuration.Add(hit.SelfDuration);
 
+                lineProfile.SelfMem = lineProfile.SelfMem + hit.SelfAllocatedBytes;
+
                 // keep the highest return index per line so we only add up durations that are not 
                 // within each other
                 if (!returnIndexPerFunctionMap.TryGetValue(key, out int returnIndex))
@@ -255,6 +263,8 @@ namespace Profiler
                     // when we have index that is higher than it, meaning we are
                     // now running after we returned from the function
                     lineProfile.Duration = lineProfile.Duration.Add(hit.Duration);
+                    lineProfile.Mem = lineProfile.Mem + hit.AllocatedBytes;
+                    lineProfile.Gc = lineProfile.Gc + hit.Gc0 + hit.Gc1 + hit.Gc2;
                 }
 
                 lineProfile.HitCount++;
@@ -363,6 +373,7 @@ namespace Profiler
                 }
 
                 lineProfile.SelfDuration = lineProfile.SelfDuration.Add(hit.SelfDuration);
+                lineProfile.SelfMem = lineProfile.SelfMem + hit.SelfAllocatedBytes;
 
                 // keep the highest return index per line so we only add up durations that are not 
                 // within each other
@@ -406,6 +417,8 @@ namespace Profiler
                     // when we have index that is higher than it, meaning we are
                     // now running after we returned from the function
                     lineProfile.Duration = lineProfile.Duration.Add(hit.Duration);
+                    lineProfile.Mem = lineProfile.Mem + hit.TotalBytes;
+                    lineProfile.Gc = lineProfile.Gc + hit.TotalGc;
                 }
 
                 lineProfile.HitCount++;

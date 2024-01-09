@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.Eventing.Reader;
 
 namespace Profiler
 {
@@ -104,5 +105,8 @@ namespace Profiler
         public int SelfGc0;
         public int SelfGc1;
         public int SelfGc2;
+
+        public long TotalBytes;
+        public int   TotalGc;
     }
 }
