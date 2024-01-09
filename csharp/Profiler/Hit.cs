@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.Eventing.Reader;
 
 namespace Profiler
 {
@@ -84,5 +85,28 @@ namespace Profiler
         public int CallerIndex;
 
         public bool Folded;
+
+        public long HeapSize;
+
+        public long WorkingSet;
+
+        public long SelfHeapSize;
+
+        public long SelfWorkingSet;
+
+        public long AllocatedBytes;
+
+        public long SelfAllocatedBytes;
+
+        public int Gc0;
+        public int Gc1;
+        public int Gc2;
+
+        public int SelfGc0;
+        public int SelfGc1;
+        public int SelfGc2;
+
+        public long TotalBytes;
+        public int   TotalGc;
     }
 }

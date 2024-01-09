@@ -29,6 +29,12 @@ namespace Profiler
         /// </summary>
         public TimeSpan SelfDuration { get; set; } = TimeSpan.Zero;
 
+        public long Mem { get; set; }
+        public long SelfMem { get; set; }
+
+        public int Gc { get; set; }
+        public  int SelfGc { get; set; }
+
 
         /// <summary>
         /// Number of hits on line.
