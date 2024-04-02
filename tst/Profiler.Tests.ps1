@@ -142,3 +142,45 @@ Describe "Trace-Script" {
         }
     }
 }
+
+Describe 'Memory tracing' { 
+    It 'Counts GC' { 
+        $sb = {  
+            [gc]::Collect(0, [System.GCCollectionMode]::Forced) 
+            [gc]::Collect(1, [System.GCCollectionMode]::Forced) 
+            [gc]::Collect(2, [System.GCCollectionMode]::Forced)
+        }
+        
+        $trace = Trace-Script $sb
+        # Force collects Gen0 (at least)
+        $trace.AllLines[1].Gc | Should -BeGreaterOrEqual 1
+        $trace.AllLines[1].SelfGc | Should -BeGreaterOrEqual 1
+        # Force collects Gen0 and Gen1 (at least)
+        $trace.AllLines[2].Gc | Should -BeGreaterOrEqual 2
+        $trace.AllLines[2].SelfGc | Should -BeGreaterOrEqual 2
+        # Force collects Gen0, Gen1 and Gen2
+        $trace.AllLines[3].Gc | Should -Be 3
+        $trace.AllLines[3].SelfGc | Should -Be 3
+    }
+
+    It 'Counts 0 self GC but correct total GC' { 
+        $sb = {  
+            function Invoke-GC ($generation) { [gc]::Collect($generation, [System.GCCollectionMode]::Forced)  }
+            
+            Invoke-GC 0
+            Invoke-GC 1
+            Invoke-GC 2
+        }
+        
+        $trace = Trace-Script $sb
+        # Force collects Gen0 (at least)
+        $trace.AllLines[1].Gc | Should -BeGreaterOrEqual 1
+        $trace.AllLines[1].SelfGc | Should -Be 0
+        # Force collects Gen0 and Gen1 (at least)
+        $trace.AllLines[2].Gc | Should -BeGreaterOrEqual 2
+        $trace.AllLines[2].SelfGc | Should -BeGreaterOrEqual 0
+        # Force collects Gen0, Gen1 and Gen2
+        $trace.AllLines[3].Gc | Should -Be 3
+        $trace.AllLines[3].SelfGc | Should -Be 0
+    }
+}

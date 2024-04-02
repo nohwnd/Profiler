@@ -228,7 +228,8 @@ namespace Profiler
 
                 lineProfile.SelfDuration = lineProfile.SelfDuration.Add(hit.SelfDuration);
 
-                lineProfile.SelfMem = lineProfile.SelfMem + hit.SelfAllocatedBytes;
+                lineProfile.SelfMem = lineProfile.SelfMem + hit.TotalBytes;
+                lineProfile.SelfGc = lineProfile.SelfGc + hit.TotalGc;
 
                 // keep the highest return index per line so we only add up durations that are not 
                 // within each other
@@ -263,9 +264,10 @@ namespace Profiler
                     // when we have index that is higher than it, meaning we are
                     // now running after we returned from the function
                     lineProfile.Duration = lineProfile.Duration.Add(hit.Duration);
-                    lineProfile.Mem = lineProfile.Mem + hit.AllocatedBytes;
-                    lineProfile.Gc = lineProfile.Gc + hit.Gc0 + hit.Gc1 + hit.Gc2;
                 }
+
+                lineProfile.Mem = lineProfile.Mem + hit.TotalBytes;
+                lineProfile.Gc = lineProfile.Gc + hit.TotalGc;
 
                 lineProfile.HitCount++;
 
@@ -374,6 +376,7 @@ namespace Profiler
 
                 lineProfile.SelfDuration = lineProfile.SelfDuration.Add(hit.SelfDuration);
                 lineProfile.SelfMem = lineProfile.SelfMem + hit.SelfAllocatedBytes;
+                lineProfile.SelfGc = lineProfile.SelfGc + hit.SelfGc0 + hit.SelfGc1 + hit.SelfGc2;
 
                 // keep the highest return index per line so we only add up durations that are not 
                 // within each other
@@ -417,11 +420,13 @@ namespace Profiler
                     // when we have index that is higher than it, meaning we are
                     // now running after we returned from the function
                     lineProfile.Duration = lineProfile.Duration.Add(hit.Duration);
-                    lineProfile.Mem = lineProfile.Mem + hit.TotalBytes;
-                    lineProfile.Gc = lineProfile.Gc + hit.TotalGc;
                 }
 
+                lineProfile.Mem = lineProfile.Mem + hit.TotalBytes;
+                lineProfile.Gc = lineProfile.Gc + hit.TotalGc;
+
                 lineProfile.HitCount++;
+
                 if (collectAllHits || lineProfile.Hits.Count < 100)
                 {
                     lineProfile.Hits.Add(hit);
@@ -429,7 +434,7 @@ namespace Profiler
 
                 // add distinct entries per column when there are more commands
                 // on the same line so we can see which commands contributed to the line duration
-                //if we need to count duration we can do it by moving this to the next part of the code
+                // if we need to count duration we can do it by moving this to the next part of the code
                 // where we process each hit on the line
                 if (!lineProfile.CommandHits.TryGetValue((uint)hit.Column, out var commandHit))
                 {

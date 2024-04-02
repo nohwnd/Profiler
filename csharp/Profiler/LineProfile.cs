@@ -29,11 +29,25 @@ namespace Profiler
         /// </summary>
         public TimeSpan SelfDuration { get; set; } = TimeSpan.Zero;
 
+        /// <summary>
+        /// Memory consumed by line and all subcalls.
+        /// </summary>
         public long Mem { get; set; }
+
+        /// <summary>
+        /// Memory consumed exclusively by this line.
+        /// </summary>
         public long SelfMem { get; set; }
 
+        /// <summary>
+        /// Garbage collections happening on this line and in all subcalls (all generations).
+        /// </summary>
         public int Gc { get; set; }
-        public  int SelfGc { get; set; }
+
+        /// <summary>
+        /// Garbage collections happening on this line exclusively (all generations).
+        /// </summary>
+        public int SelfGc { get; set; }
 
 
         /// <summary>

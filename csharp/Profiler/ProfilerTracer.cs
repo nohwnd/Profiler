@@ -44,11 +44,11 @@ namespace Profiler
     public class ProfilerTracer : ITracer
     {
         // timespan ticks are 10k per millisecond, but the stopwatch can have different resolution
-        // calculate the diff betwen the timestamps and convert it to 10k per ms ticks
+        // calculate the diff between the timestamps and convert it to 10k per ms ticks
         //
         // cast the frequency to double to avoid whole number division. On systems where frequency 
         // is smaller than ticks per second this otherwise results in 0, and all timestamps then
-        // become positive infininty becaue of timestamp / 0 = ∞ or when cast to long: -9223372036854775808
+        // become positive infinity because of timestamp / 0 = ∞ or when cast to long: -9223372036854775808
         private static double _tickDivider = ((double)Stopwatch.Frequency) / TimeSpan.TicksPerSecond;
         private const string ScriptBlockName = "<ScriptBlock>";
         internal int _index = 0;
@@ -88,7 +88,7 @@ namespace Profiler
             // We need to do the same when unpatching to get the last event
             if (_index > 0)
             {
-                SetSelfDurationAndAddToHits(ref _previousHit, timestamp, workingSet, heapSize, allocatedBytes, gc0, gc1, gc2);
+                SetSelfValuesAndAddToHits(ref _previousHit, timestamp, workingSet, heapSize, allocatedBytes, gc0, gc1, gc2);
                 ProfilerEventSource.Log.WriteStop(_previousHit.Index, _previousHit.Function, _previousHit.Text);
             }
 
@@ -143,7 +143,7 @@ namespace Profiler
             ProfilerEventSource.Log.WriteStart(_previousHit.Index, _previousHit.Function, _previousHit.Text);
         }
 
-        private void SetSelfDurationAndAddToHits(ref Hit eventRecord, long timestamp, 
+        private void SetSelfValuesAndAddToHits(ref Hit eventRecord, long timestamp, 
             long workingSet, long heapSize, long allocatedBytes,
             int gc0, int gc1, int gc2)
         {

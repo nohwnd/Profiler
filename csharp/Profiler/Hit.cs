@@ -30,17 +30,17 @@ namespace Profiler
         public ScriptExtent Extent;
 
         /// <summary>
-        /// Unique identifer of the runspace.
+        /// Unique identifier of the runspace.
         /// </summary>
         public Guid RunspaceId;
 
         /// <summary>
-        /// Unique identifer of the parent script block.
+        /// Unique identifier of the parent script block.
         /// </summary>
         public Guid ParentScriptBlockId;
 
         /// <summary>
-        /// Unique identifer of the script block.
+        /// Unique identifier of the script block.
         /// </summary>
         public Guid ScriptBlockId;
 
@@ -48,7 +48,7 @@ namespace Profiler
         public int Index;
         public TimeSpan Overhead;
 
-        // extent file might be empty when we are in unsaves scriptblock
+        // extent file might be empty when we are in unsaved scriptblock
         // this is set when creating the struct
         public bool IsInFile;
 
@@ -86,27 +86,34 @@ namespace Profiler
 
         public bool Folded;
 
+        // HeapSize at the start of the hit.
         public long HeapSize;
 
+        // WorkingSet at the start of the hit.
         public long WorkingSet;
 
+        // HeapSize heapSize consumed by the hit (endHeapSize - startHeapSize).
         public long SelfHeapSize;
 
+        // Working set consumed by the hit.
         public long SelfWorkingSet;
 
+        // Working set consumed by the hit.
         public long AllocatedBytes;
 
         public long SelfAllocatedBytes;
 
         public int Gc0;
-        public int Gc1;
-        public int Gc2;
-
         public int SelfGc0;
+
+        public int Gc1;
         public int SelfGc1;
+
+        public int Gc2;
         public int SelfGc2;
 
+
         public long TotalBytes;
-        public int   TotalGc;
+        public int  TotalGc;
     }
 }
