@@ -244,7 +244,7 @@ function Trace-Script {
     $top50SelfMemory = $all |
     Where-Object HitCount -gt 0 |
     Sort-Object -Property SelfMemory -Descending |
-    Select-Object -First 50 #  | 
+    Select-Object -First 50  | 
     ForEach-Object { [Profiler.SelfMemoryView]::new($_) }
     Write-TimeAndRestart $sw
 
@@ -252,7 +252,7 @@ function Trace-Script {
     $top50Memory = $all |
     Where-Object HitCount -gt 0 |
     Sort-Object -Property Memory -Descending |
-    Select-Object -First 50 #  | 
+    Select-Object -First 50  | 
     ForEach-Object { [Profiler.MemoryView]::new($_) }
     Write-TimeAndRestart $sw
 
