@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿namespace Profiler.SpeedScope;
 
-namespace Profiler.SpeedScope
+public class SpeedScopeEvent
 {
-    public class SpeedScopeEvent
-    {
-        public double At { get; internal set; }
-        public int Frame { get; internal set; }
-        public string Type { get; internal set; }
-    }
+    public double At { get; internal set; }
+    public int Frame { get; internal set; }
+    public string Type { get; internal set; }
 }

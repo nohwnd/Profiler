@@ -35,6 +35,14 @@
                 <ScriptBlock>'List top 50 functions based on time consumed directly by the function'</ScriptBlock>
               </ListItem>
               <ListItem>
+                <Label>Top50Memory</Label>
+                <ScriptBlock>'List top 50 lines based on the memory consumed'</ScriptBlock>
+              </ListItem>
+              <ListItem>
+                <Label>Top50SelfMemory</Label>
+                <ScriptBlock>'List top 50 lines based on the memory consumed directly by the line'</ScriptBlock>
+              </ListItem>
+              <ListItem>
                 <Label>AllLines</Label>
                 <ScriptBlock>'Show all lines processed by profiler trace'</ScriptBlock>
               </ListItem>
@@ -603,6 +611,199 @@
               </TableColumnItem>
               <TableColumnItem>
                 <PropertyName>Function</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+
+    <!-- Memory views -->
+    <View>
+      <Name>Profiler.MemoryView</Name>
+      <ViewSelectedBy>
+        <TypeName>Profiler.MemoryView</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <AutoSize />
+        <TableHeaders>
+          <TableColumnHeader>
+            <Alignment>Right</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Right</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Right</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Right</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Right</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Right</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Right</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Right</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>MemoryPercent</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Memory</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Gc</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>SelfMemoryPercent</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>SelfMemory</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>SelfGc</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Duration</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>HitCount</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>File</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Line</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Module</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Function</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Text</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+
+    <View>
+      <Name>Profiler.SelfMemoryView</Name>
+      <ViewSelectedBy>
+        <TypeName>Profiler.SelfMemoryView</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <AutoSize />
+        <TableHeaders>
+          <TableColumnHeader>
+            <Alignment>Right</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Right</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Right</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Right</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Right</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Right</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Right</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Right</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Left</Alignment>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Alignment>Left</Alignment>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>SelfMemoryPercent</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>SelfMemory</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>SelfGc</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>MemoryPercent</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Memory</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Gc</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Duration</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>HitCount</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>File</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Line</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Module</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Function</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Text</PropertyName>
               </TableColumnItem>
             </TableColumnItems>
           </TableRowEntry>

@@ -2,7 +2,6 @@
 cd $PSScriptRoot
 get-module profiler | remove-module
 
-# .\build.ps1
 import-module .\Profiler\Profiler.psd1
 
 $sb = {  
@@ -13,6 +12,22 @@ $sb = {
     Invoke-GC 2
 
     $a = "abc" 
+
+    function f ($Level) { 
+        if ($Level -gt 10) { 
+            return
+        }
+
+        Invoke-GC 0 # rec
+
+        $p = Get-Process # rec
+
+        Start-Sleep -Milliseconds 10
+        $Level
+        f -Level ($Level + 1)
+    }
+
+    f 0; f 0
 
     $b = [System.Collections.Generic.List[int]]::new(1000)
     
@@ -31,6 +46,4 @@ $sb = {
 }
 
 $trace = Trace-Script $sb
-$trace.AllLines | ft *mem*,*gc*, text
-
-# $trace.Events | select index, @{ n="txt"; e = { ($_.text[0..20] -join "" ) }}, heapsize, workingset, selfheapsize, selfworkingset, AllocatedBytes, SelfAllocatedBytes, gc0, gc1, gc2, selfgc0, selfgc1, selfgc2 | ft
+$trace.Top50SelfMemory

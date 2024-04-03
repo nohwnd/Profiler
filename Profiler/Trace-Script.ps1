@@ -164,6 +164,7 @@ function Trace-Script {
     # trace starts with event from the measurement script where we enable tracing and ends with event where we disable it
     # events are timestamped at the start so user code duration is from the second event (index 1), till the last real event (index -2) where we disable tracing
     $total = if ($null -ne $trace -and 0 -lt @($trace).Count) { [TimeSpan]::FromTicks($trace[-2].Timestamp - $trace[2].Timestamp) } else { [TimeSpan]::Zero }
+    $totalMem = if ($null -ne $trace -and 0 -lt @($trace).Count) { $trace[-2].AllocatedBytes - $trace[2].AllocatedBytes } else { 0 }
 
     Write-Host -ForegroundColor Magenta "Counting averages and percentages for lines." -NoNewline
     # this is like SelectMany, it lists all the lines in all files into a single array
@@ -171,6 +172,8 @@ function Trace-Script {
         $ticks = if (0 -ne $total.Ticks) { $total.Ticks } else { 1 }
         $line.Percent = [Math]::Round($line.Duration.Ticks / $ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
         $line.SelfPercent = [Math]::Round($line.SelfDuration.Ticks / $ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
+        $line.MemoryPercent = [Math]::Round($line.Memory / $totalMem, 5, [System.MidpointRounding]::AwayFromZero) * 100
+        $line.SelfMemoryPercent = [Math]::Round($line.SelfMemory / $totalMem, 5, [System.MidpointRounding]::AwayFromZero) * 100
         $line
     }
     Write-TimeAndRestart $sw
@@ -237,6 +240,22 @@ function Trace-Script {
     ForEach-Object { [Profiler.FunctionHitCountView]::new($_) }
     Write-TimeAndRestart $sw
 
+    Write-Host -ForegroundColor Magenta "Getting Top50 functions with the most Self memory." -NoNewline
+    $top50SelfMemory = $all |
+    Where-Object HitCount -gt 0 |
+    Sort-Object -Property SelfMemory -Descending |
+    Select-Object -First 50 #  | 
+    ForEach-Object { [Profiler.SelfMemoryView]::new($_) }
+    Write-TimeAndRestart $sw
+
+    Write-Host -ForegroundColor Magenta "Getting Top50 functions with the most memory." -NoNewline
+    $top50Memory = $all |
+    Where-Object HitCount -gt 0 |
+    Sort-Object -Property Memory -Descending |
+    Select-Object -First 50 #  | 
+    ForEach-Object { [Profiler.MemoryView]::new($_) }
+    Write-TimeAndRestart $sw
+
     # do not use object initializer syntax here @{}
     # when it fails it will not create any object
     # and won't tell you on which line exactly it failed
@@ -257,6 +276,8 @@ function Trace-Script {
     $script:processedTrace.Top50FunctionDuration = $top50FunctionDuration
     $script:processedTrace.Top50FunctionHitCount = $top50FunctionHitCount
     $script:processedTrace.Top50FunctionSelfDuration = $top50FunctionSelfDuration
+    $script:processedTrace.Top50SelfMemory = $top50SelfMemory
+    $script:processedTrace.Top50Memory = $top50Memory
 
     $script:processedTrace
 

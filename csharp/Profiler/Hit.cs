@@ -1,119 +1,117 @@
 ﻿using System;
-using System.Diagnostics.Eventing.Reader;
 
-namespace Profiler
+namespace Profiler;
+
+/// <summary>
+/// Measure-ScriptBlock output type.
+/// </summary>
+public struct Hit
 {
     /// <summary>
-    /// Measure-ScriptBlock output type.
+    /// StartTime of event.
     /// </summary>
-    public struct Hit
-    {
-        /// <summary>
-        /// StartTime of event.
-        /// </summary>
-        public TimeSpan StartTime;
+    public TimeSpan StartTime;
 
-        /// <summary>
-        /// SelfDuration of event.
-        /// </summary>
-        public TimeSpan SelfDuration;
-        public TimeSpan Duration;
+    /// <summary>
+    /// SelfDuration of event.
+    /// </summary>
+    public TimeSpan SelfDuration;
+    public TimeSpan Duration;
 
-        /// <summary>
-        /// Script text.
-        /// </summary>
-        public string Source;
+    /// <summary>
+    /// Script text.
+    /// </summary>
+    public string Source;
 
-        /// <summary>
-        /// Script Extent.
-        /// </summary>
-        public ScriptExtent Extent;
+    /// <summary>
+    /// Script Extent.
+    /// </summary>
+    public ScriptExtent Extent;
 
-        /// <summary>
-        /// Unique identifier of the runspace.
-        /// </summary>
-        public Guid RunspaceId;
+    /// <summary>
+    /// Unique identifier of the runspace.
+    /// </summary>
+    public Guid RunspaceId;
 
-        /// <summary>
-        /// Unique identifier of the parent script block.
-        /// </summary>
-        public Guid ParentScriptBlockId;
+    /// <summary>
+    /// Unique identifier of the parent script block.
+    /// </summary>
+    public Guid ParentScriptBlockId;
 
-        /// <summary>
-        /// Unique identifier of the script block.
-        /// </summary>
-        public Guid ScriptBlockId;
+    /// <summary>
+    /// Unique identifier of the script block.
+    /// </summary>
+    public Guid ScriptBlockId;
 
-        // profiler specific fields
-        public int Index;
-        public TimeSpan Overhead;
+    // profiler specific fields
+    public int Index;
+    public TimeSpan Overhead;
 
-        // extent file might be empty when we are in unsaved scriptblock
-        // this is set when creating the struct
-        public bool IsInFile;
+    // extent file might be empty when we are in unsaved ScriptBlock
+    // this is set when creating the struct
+    public bool IsInFile;
 
 
-        // adapting to unified format
-        public string Path => Extent.File;
-        public int Line => Extent.StartLineNumber;
-        public int Column => Extent.StartColumnNumber;
-        public string Text => Extent.Text;
-        public long Timestamp => StartTime.Ticks;
+    // adapting to unified format
+    public string Path => Extent.File;
+    public int Line => Extent.StartLineNumber;
+    public int Column => Extent.StartColumnNumber;
+    public string Text => Extent.Text;
+    public long Timestamp => StartTime.Ticks;
 
-        public string Group;
+    public string Group;
 
-        /// <summary>
-        /// The function name that is on top of stack.
-        /// </summary>
-        public string Function;
+    /// <summary>
+    /// The function name that is on top of stack.
+    /// </summary>
+    public string Function;
 
-        /// <summary>
-        /// The module name where that function is coming from.
-        /// </summary>
-        public string Module;
+    /// <summary>
+    /// The module name where that function is coming from.
+    /// </summary>
+    public string Module;
 
-        /// <summary>
-        /// How deep we are in the call stack.
-        /// </summary>
-        public int Level;
+    /// <summary>
+    /// How deep we are in the call stack.
+    /// </summary>
+    public int Level;
 
-        public Flow Flow;
+    public Flow Flow;
 
-        // where we returned if we are a call, otherwise our own index
-        public int ReturnIndex;
-        // who called us
-        public int CallerIndex;
+    // where we returned if we are a call, otherwise our own index
+    public int ReturnIndex;
+    // who called us
+    public int CallerIndex;
 
-        public bool Folded;
+    public bool Folded;
 
-        // HeapSize at the start of the hit.
-        public long HeapSize;
+    // HeapSize at the start of the hit.
+    public long HeapSize;
 
-        // WorkingSet at the start of the hit.
-        public long WorkingSet;
+    // WorkingSet at the start of the hit.
+    public long WorkingSet;
 
-        // HeapSize heapSize consumed by the hit (endHeapSize - startHeapSize).
-        public long SelfHeapSize;
+    // HeapSize heapSize consumed by the hit (endHeapSize - startHeapSize).
+    public long SelfHeapSize;
 
-        // Working set consumed by the hit.
-        public long SelfWorkingSet;
+    // Working set consumed by the hit.
+    public long SelfWorkingSet;
 
-        // Working set consumed by the hit.
-        public long AllocatedBytes;
+    // Working set consumed by the hit.
+    public long AllocatedBytes;
 
-        public long SelfAllocatedBytes;
+    public long SelfAllocatedBytes;
 
-        public int Gc0;
-        public int SelfGc0;
+    public int Gc0;
+    public int SelfGc0;
 
-        public int Gc1;
-        public int SelfGc1;
+    public int Gc1;
+    public int SelfGc1;
 
-        public int Gc2;
-        public int SelfGc2;
+    public int Gc2;
+    public int SelfGc2;
 
 
-        public long TotalBytes;
-        public int  TotalGc;
-    }
+    public long TotalBytes;
+    public int  TotalGc;
 }

@@ -3,7 +3,7 @@
 
    <!-- 
     Build for PowerShell 5, 7 and PowerShell 3 and 4 separately. 3 and 4 does not have .Id property on ScriptBlock which we need for reporting speed 
-    in unbound scriptblocks, but if we just skip them we don't need it. 
+    in unbound ScriptBlocks, but if we just skip them we don't need it. 
     
     Sticking with net6.0 for 7.2 which is currently the oldest supported PowerShell version.
     https://learn.microsoft.com/en-us/powershell/scripting/install/powershell-support-lifecycle?view=powershell-7.4

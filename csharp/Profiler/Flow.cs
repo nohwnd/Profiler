@@ -1,11 +1,8 @@
-﻿using System;
+﻿namespace Profiler;
 
-namespace Profiler
+public enum Flow
 {
-    public enum Flow
-    {
-        Call = 0,
-        Return,
-        Process
-    }
+    Call = 0,
+    Return,
+    Process
 }
