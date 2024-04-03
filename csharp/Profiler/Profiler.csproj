@@ -1,43 +1,28 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 
-   <!-- Build for PowerShell 5, 7 and PowerShell 3 and 4 separately. 3 and 4 does not have .Id property on ScriptBlock which we need for reporting speed 
-    in unbound scriptblocks, but if we just skip them we don't need it.-->  
-  <PropertyGroup Condition=" '$(PowerShellVersion)' == '' ">
-    <TargetFrameworks>netstandard2.0;net452;net451</TargetFrameworks>
-	<LangVersion>Latest</LangVersion>
+   <!-- 
+    Build for PowerShell 5, 7 and PowerShell 3 and 4 separately. 3 and 4 does not have .Id property on ScriptBlock which we need for reporting speed 
+    in unbound ScriptBlocks, but if we just skip them we don't need it. 
+    
+    Sticking with net6.0 for 7.2 which is currently the oldest supported PowerShell version.
+    https://learn.microsoft.com/en-us/powershell/scripting/install/powershell-support-lifecycle?view=powershell-7.4
+    -->  
+  <PropertyGroup Condition=" '$(PowerShellVersion)' == '' ">    
+    <TargetFrameworks>net6.0;net452;net451</TargetFrameworks>
+	  <LangVersion>Latest</LangVersion>
   </PropertyGroup>
   
  <PropertyGroup Condition=" '$(TargetFramework)' == 'net451' ">
     <DefineConstants>$(DefineConstants);POWERSHELL3</DefineConstants>
   </PropertyGroup>
-  
- <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|netstandard2.0|AnyCPU'">
-   <DebugType>embedded</DebugType>
- </PropertyGroup>
-  
- <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard2.0|AnyCPU'">
-   <DebugType>embedded</DebugType>
- </PropertyGroup>
-  
- <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net452|AnyCPU'">
-   <DebugType>embedded</DebugType>
- </PropertyGroup>
-  
- <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net452|AnyCPU'">
-   <DebugType>embedded</DebugType>
- </PropertyGroup>
-  
- <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net451|AnyCPU'">
-   <DebugType>embedded</DebugType>
- </PropertyGroup>
-  
- <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net451|AnyCPU'">
+
+ <PropertyGroup>
    <DebugType>embedded</DebugType>
  </PropertyGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="System.Management.Automation" Version="6.1.0" />
+  <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
+    <PackageReference Include="System.Management.Automation" Version="7.2.17" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net452'">
@@ -61,6 +46,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 </Project>

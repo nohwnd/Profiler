@@ -1,6 +1,6 @@
 # for BP to attach
 if ($PSVersionTable.PSVersion.Major -ge 7) {
-    [Reflection.Assembly]::LoadFrom("$PSScriptRoot/bin/netstandard2.0/Profiler.dll")
+    [Reflection.Assembly]::LoadFrom("$PSScriptRoot/bin/net6.0/Profiler.dll")
 }
 elseif ($PSVersionTable.PSVersion.Major -ge 5) {
     [Reflection.Assembly]::LoadFrom("$PSScriptRoot/bin/net452/Profiler.dll")

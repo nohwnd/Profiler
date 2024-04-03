@@ -1,207 +1,108 @@
 using System;
 using System.Collections.Generic;
 
-namespace Profiler
+namespace Profiler;
+
+/// <summary>
+/// Represents a profiled line.
+/// </summary>
+public class LineProfile
 {
     /// <summary>
-    /// Represents a profiled line.
+    /// Percent of total duration used by line including all the code it calls.
     /// </summary>
-    public class LineProfile
-    {
-        /// <summary>
-        /// Percent of total duration used by line including all the code it calls.
-        /// </summary>
-        public double Percent { get; set; } = 0.00;
+    public double Percent { get; set; } = 0.00;
 
-        /// <summary>
-        /// Time used by line including subcalls.
-        /// </summary>
-        public TimeSpan Duration { get; set; } = TimeSpan.Zero;
-
-
-        /// <summary>
-        /// Percent of total duration used by line, excluding the code it calls.
-        /// </summary>
-        public double SelfPercent { get; set; } = 0.00;
-
-        /// <summary>
-        /// Time used exclusively by this line.
-        /// </summary>
-        public TimeSpan SelfDuration { get; set; } = TimeSpan.Zero;
-
-
-        /// <summary>
-        /// Number of hits on line.
-        /// </summary>
-        public uint HitCount { get; set; } = 0;
-
-        /// <summary>
-        /// Name of file or id of scriptblock the line belongs to.
-        /// </summary>
-        public string File { get; set; }
-
-        /// <summary>
-        /// Line number in the file or scriptblock.
-        /// </summary>
-        public uint? Line { get; set; }
-
-        /// <summary>
-        /// Function that called this line.
-        /// </summary>
-        public string Function { get; set; }
-
-        /// <summary>
-        /// Module that contains the function that called the line.
-        /// </summary>
-        public string Module { get; set; }
-
-        /// <summary>
-        /// Text of line.
-        /// </summary>
-        public string Text { get; set; }
-
-        /// <summary>
-        /// Absolute path of file or id of scriptblock the line belongs to.
-        /// </summary>
-        public string Path { get; set; }
-
-        /// <summary>
-        /// Event records for all hits to the line.
-        /// </summary>
-        public ICollection<Hit> Hits { get; set; } = new List<Hit>();
-
-        /// <summary>
-        /// All command hits in this line using column as key.
-        /// </summary>
-        public IDictionary<uint, CommandHit> CommandHits { get; set; } = new Dictionary<uint, CommandHit>();
-    }
+    /// <summary>
+    /// Time used by line including subcalls.
+    /// </summary>
+    public TimeSpan Duration { get; set; } = TimeSpan.Zero;
 
 
     /// <summary>
-    /// Powershell formatting files distinguish the type of data by the real type, and they don't consider 
-    /// interfaces. I need multiple different views of the same data, without duplicating it too much,
-    /// e.g. when showing Top50SelfDuration I want SelfPercent and SelfDuration to be the first items,
-    /// but for Top50Duration I want Percent and Duration to be the first items. And I also don't want to remove
-    /// any of the properties from the object (e.g. by copying it to a new object type that has the correct order of 
-    /// properties.). Instead this class wraps LineProfile and delegates to all it's properties.
+    /// Percent of total duration used by line, excluding the code it calls.
     /// </summary>
-    /// <typeparam name="T"></typeparam>
-    public abstract partial class LineProfileView
-    {
-        private LineProfile _line;
+    public double SelfPercent { get; set; } = 0.00;
 
-        public LineProfileView(LineProfile line)
-        {
-            _line = line;
-        }
-
-        /// <summary>
-        /// Percent of total duration used by line including all the code it calls.
-        /// </summary>
-        public double Percent => _line.Percent;
-
-        /// <summary>
-        /// Time used by line including subcalls.
-        /// </summary>
-        public TimeSpan Duration => _line.Duration;
+    /// <summary>
+    /// Time used exclusively by this line.
+    /// </summary>
+    public TimeSpan SelfDuration { get; set; } = TimeSpan.Zero;
 
 
-        /// <summary>
-        /// Percent of total duration used by line, excluding the code it calls.
-        /// </summary>
-        public double SelfPercent => _line.SelfPercent;
+    /// <summary>
+    /// Percent of total memory used by line including all the code it calls.
+    /// </summary>
+    public double MemoryPercent { get; set; } = 0.00;
 
-        /// <summary>
-        /// Time used exclusively by this line.
-        /// </summary>
-        public TimeSpan SelfDuration => _line.SelfDuration;
+    /// <summary>
+    /// Memory consumed by line and all subcalls.
+    /// </summary>
+    public long Memory { get; set; }
+
+    /// <summary>
+    /// Percent of total memory used by line, excluding the code it calls.
+    /// </summary>
+    public double SelfMemoryPercent { get; set; } = 0.00;
+
+    /// <summary>
+    /// Memory consumed exclusively by this line.
+    /// </summary>
+    public long SelfMemory { get; set; }
+
+    /// <summary>
+    /// Garbage collections happening on this line and in all subcalls (all generations).
+    /// </summary>
+    public int Gc { get; set; }
+
+    /// <summary>
+    /// Garbage collections happening on this line exclusively (all generations).
+    /// </summary>
+    public int SelfGc { get; set; }
 
 
-        /// <summary>
-        /// Number of hits on line.
-        /// </summary>
-        public uint HitCount => _line.HitCount;
+    /// <summary>
+    /// Number of hits on line.
+    /// </summary>
+    public uint HitCount { get; set; } = 0;
 
-        /// <summary>
-        /// Name of file or id of scriptblock the line belongs to.
-        /// </summary>
-        public string File => _line.File;
+    /// <summary>
+    /// Name of file or id of ScriptBlock the line belongs to.
+    /// </summary>
+    public string File { get; set; }
 
-        /// <summary>
-        /// Line number in the file or scriptblock.
-        /// </summary>
-        public uint? Line => _line.Line;
+    /// <summary>
+    /// Line number in the file or ScriptBlock.
+    /// </summary>
+    public uint? Line { get; set; }
 
-        /// <summary>
-        /// Function that called this line.
-        /// </summary>
-        public string Function => _line.Function;
+    /// <summary>
+    /// Function that called this line.
+    /// </summary>
+    public string Function { get; set; }
 
-        /// <summary>
-        /// Module that contains the function that called the line.
-        /// </summary>
-        public string Module => _line.Module;
+    /// <summary>
+    /// Module that contains the function that called the line.
+    /// </summary>
+    public string Module { get; set; }
 
-        /// <summary>
-        /// Text of line.
-        /// </summary>
-        public string Text => _line.Text;
+    /// <summary>
+    /// Text of line.
+    /// </summary>
+    public string Text { get; set; }
 
-        /// <summary>
-        /// Absolute path of file or id of scriptblock the line belongs to.
-        /// </summary>
-        public string Path => _line.Path;
+    /// <summary>
+    /// Absolute path of file or id of ScriptBlock the line belongs to.
+    /// </summary>
+    public string Path { get; set; }
 
-        /// <summary>
-        /// Event records for all hits to the line.
-        /// </summary>
-        public ICollection<Hit> Hits => _line.Hits;
+    /// <summary>
+    /// Event records for all hits to the line.
+    /// </summary>
+    public ICollection<Hit> Hits { get; set; } = new List<Hit>();
 
-        /// <summary>
-        /// All command hits in this line using column as key.
-        /// </summary>
-        public IDictionary<uint, CommandHit> CommandHits => _line.CommandHits;
-    }
-
-    public class FunctionHitCountView : LineProfileView
-    {
-        public FunctionHitCountView(LineProfile line) : base(line)
-        {
-        }
-    }
-
-    public class HitCountView : LineProfileView
-    {
-        public HitCountView(LineProfile line) : base(line)
-        {
-        }
-    }
-
-    public class FunctionDurationView : LineProfileView
-    {
-        public FunctionDurationView(LineProfile line) : base(line)
-        {
-        }
-    }
-
-    public class FunctionSelfDurationView : LineProfileView
-    {
-        public FunctionSelfDurationView(LineProfile line) : base(line)
-        {
-        }
-    }
-
-    public class DurationView : LineProfileView
-    {
-        public DurationView(LineProfile line) : base(line)
-        {
-        }
-    }
-
-    public class SelfDurationView : LineProfileView
-    {
-        public SelfDurationView(LineProfile line) : base(line)
-        {
-        }
-    }
+    /// <summary>
+    /// All command hits in this line using column as key.
+    /// </summary>
+    public IDictionary<uint, CommandHit> CommandHits { get; set; } = new Dictionary<uint, CommandHit>();
 }

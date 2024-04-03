@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿namespace Profiler.SpeedScope;
 
-namespace Profiler.SpeedScope
+public class SpeedScopeFrame
 {
-    public class SpeedScopeFrame
-    {
-        public string Name { get; set; }
-    }
+    public string Name { get; set; }
 }

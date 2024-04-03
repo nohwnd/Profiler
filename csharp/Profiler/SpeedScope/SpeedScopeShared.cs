@@ -1,9 +1,8 @@
 ﻿using System.Collections.Generic;
 
-namespace Profiler.SpeedScope
+namespace Profiler.SpeedScope;
+
+public class SpeedScopeShared
 {
-    public class SpeedScopeShared
-    {
-        public List<SpeedScopeFrame> Frames { get; set; }
-    }
+    public List<SpeedScopeFrame> Frames { get; set; }
 }
