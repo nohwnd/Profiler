@@ -75,9 +75,9 @@ namespace Profiler
             var gc2 = GC.CollectionCount(2);
 
 #if NET5_0_OR_GREATER
-            var allocatedBytes = GC.GetTotalAllocatedBytes();
+            var allocatedBytes = GC.GetTotalAllocatedBytes(precise: false);
 #else
-            var allocatedBytes = 0;
+            var allocatedBytes = GC.GetTotalMemory(forceFullCollection: false);
 #endif
 
             // we are using structs so we need to insert the final struct to the 
