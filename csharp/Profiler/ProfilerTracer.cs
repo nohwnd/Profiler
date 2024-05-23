@@ -58,7 +58,7 @@ public class ProfilerTracer : ITracer
     public Dictionary<Guid, ScriptBlock> ScriptBlocks { get; } = new Dictionary<Guid, ScriptBlock>();
     public Dictionary<string, ScriptBlock> FileScriptBlocks { get; } = new Dictionary<string, ScriptBlock>();
 
-    public void Trace(IScriptExtent extent, ScriptBlock scriptBlock, int level, string functionName, string moduleName)
+    public void Trace(string _, IScriptExtent extent, ScriptBlock scriptBlock, int level, string functionName, string moduleName)
     {
         var timestampRaw = Stopwatch.GetTimestamp();
         // usually 1 on Windows Desktop, 100 on *nix, but can be anything on some server systems like some Windows Server 2016
@@ -105,7 +105,7 @@ public class ProfilerTracer : ITracer
             {
                 FileScriptBlocks.Add(scriptBlock.File, scriptBlock);
             }
-  }          
+        }
 #endif
         // overwrite the previous event because we already scraped it
         _previousHit = new Hit();
@@ -143,7 +143,7 @@ public class ProfilerTracer : ITracer
         ProfilerEventSource.Log.WriteStart(_previousHit.Index, _previousHit.Function, _previousHit.Text);
     }
 
-    private void SetSelfValuesAndAddToHits(ref Hit eventRecord, long timestamp, 
+    private void SetSelfValuesAndAddToHits(ref Hit eventRecord, long timestamp,
         long workingSet, long heapSize, long allocatedBytes,
         int gc0, int gc1, int gc2)
     {
