@@ -126,7 +126,6 @@ function Trace-Script {
         [Switch] $Before,
         [Switch] $After,
         [string] $ExportPath
-        # [Switch] $UseNativePowerShell7Profiler
     )
 
     if ($Before -and $After) {
@@ -140,7 +139,8 @@ function Trace-Script {
     $invokedAs = $MyInvocation.Line
 
     $out = @{ Stopwatch = [TimeSpan]::Zero; ScriptBlocks = $null }
-    $trace = Trace-ScriptInternal -ScriptBlock $ScriptBlock -Preheat $Preheat -DisableWarning:$DisableWarning -Flag $Flag -UseNativePowerShell7Profiler:$UseNativePowerShell7Profiler -Before:$Before -Out $out
+    $result = Trace-ScriptInternal -ScriptBlock $ScriptBlock -Preheat $Preheat -DisableWarning:$DisableWarning -Flag $Flag -Before:$Before -Out $out
+    $trace = $result.Trace
 
     $scriptBlocks = $out.ScriptBlocks
     $traceCount = $trace.Count
@@ -333,7 +333,13 @@ function Trace-Script {
         Export-SpeedScope -Trace $script:processedTrace -Path $ExportPath
     }
 
-    Write-Host -ForegroundColor Magenta "Done. Try $(if ($variable) { "$($variable)" } else { '$yourVariable' }).Top50SelfDuration to get the report. There are also Top50Duration, Top50HitCount, Top50FunctionSelfDuration, Top50FunctionDuration, Top50FunctionHitCount AllLines and Events."
+    if ($null -eq $result.Error) {
+        Write-Host -ForegroundColor Magenta "Done." -NoNewline
+    }
+    else {
+        Write-Host -ForegroundColor Red "Done, script had error. See above." -NoNewline
+    }
+    Write-Host -ForegroundColor Magenta " Try $(if ($variable) { "$($variable)" } else { '$yourVariable' }).Top50SelfDuration to get the report. There are also Top50Duration, Top50HitCount, Top50FunctionSelfDuration, Top50FunctionDuration, Top50FunctionHitCount AllLines and Events."
 }
 
 function Get-LatestTrace {

@@ -7,7 +7,6 @@ function Trace-ScriptInternal {
         [Switch] $DisableWarning,
         [Hashtable] $Flag,
         [Switch] $Before,
-        [Switch] $UseNativePowerShell7Profiler,
         # Putting the collection into object will make it modified when returned for some reason
         # outputting time through this
         $Out
@@ -37,16 +36,10 @@ function Trace-ScriptInternal {
         foreach ($i in 1..$Preheat) {
             Write-Host -Foreground Magenta  "Warm up $i"
 
-            if ($UseNativePowerShell7Profiler) {
-                $null = Measure-Script $ScriptBlock
-            }
-            else {
-                $result = Measure-ScriptHarmony $ScriptBlock
-                if ($null -ne $result.Error) { 
-                    Write-Host -ForegroundColor Red "Warm up failed with $($result.Error)."
-                }
-            }
-            
+            $result = Measure-ScriptHarmony $ScriptBlock
+            if ($null -ne $result.Error) { 
+                Write-Host -ForegroundColor Red "Warm up failed with $($result.Error)."
+            }            
         }
     }
 
@@ -60,12 +53,8 @@ function Trace-ScriptInternal {
     Write-Host -Foreground Magenta  "Starting trace."
     Write-Host -Foreground Magenta  "Stopwatch $(if([Diagnostics.Stopwatch]::IsHighResolution) { "is" } else { "is not" }) high resolution, max resolution of timestamps is $([int] (1e9/[Diagnostics.Stopwatch]::Frequency))ns."
 
-    if ($UseNativePowerShell7Profiler) {
-        $result = Measure-Script $ScriptBlock
-    }
-    else {
-        $result = Measure-ScriptHarmony $ScriptBlock
-    }
+    $result = Measure-ScriptHarmony $ScriptBlock
+
     if ($null -eq $result.Error) {
         Write-Host -Foreground Magenta  "Run$(if (1 -lt $sides.Count) { " - $side" }) finished after $($result.Stopwatch)."
     }
@@ -75,37 +64,8 @@ function Trace-ScriptInternal {
 
     $out.Stopwatch = $result.Stopwatch
     $out.ScriptBlocks = $result.ScriptBlocks
-    $trace = $result.Trace
     Write-Host -Foreground Magenta "Tracing done. Got $($trace.Count) trace events."
-    if ($UseNativePowerShell7Profiler) {
-        $normalizedTrace = [Collections.Generic.List[Profiler.Hit]]::new($trace.Count)
-        Write-Host "Used native tracer from PowerShell 7. Normalizing trace."
-        foreach ($t in $trace) { 
-            $r = [Profiler.Hit]::new()
-            $e = [Profiler.ScriptExtent]::new()
-            $e.File = $t.Extent.File
-            $e.StartLineNumber = $t.Extent.StartLineNumber
-            $e.StartColumnNumber = $t.Extent.StartColumnNumber
-            $e.EndLineNumber = $t.Extent.EndLineNumber
-            $e.EndColumnNumber = $t.Extent.EndColumnNumber
-            $e.StartOffset = $t.Extent.StartOffset
-            $e.EndOffset = $t.Extent.EndOffset
-            $r.Extent = $e
-            $r.StartTime = $t.StartTime
-            $r.SelfDuration = $t.SelfDuration
-            $r.Index = $index
-
-            $index++
-
-            $normalizedTrace.Add($r)
-        }
-        
-        $trace = $null
-        $normalizedTrace
-    }
-    else { 
-        $trace
-    }
+    $result
 }
 
 function Measure-ScriptHarmony ($ScriptBlock) {
@@ -145,7 +105,7 @@ function Measure-ScriptHarmony ($ScriptBlock) {
             # disable tracing in any case because we don't want too many internal 
             # details to leak into the log, otherwise any change in this code will 
             # reflect into the log and we need to change counts in Profiler
-            $dontRenameThisVariableItIsUsedForCorruptionAutodetection = Set-PSDebug -Trace 0
+            $corruptionAutodetectionVariable = Set-PSDebug -Trace 0
             $sw.Stop()
             if ([Profiler.Tracer]::HasTracer2) {
                 $null = [Profiler.Tracer]::Unregister()
