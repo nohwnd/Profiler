@@ -145,7 +145,7 @@ function Measure-ScriptHarmony ($ScriptBlock) {
             # disable tracing in any case because we don't want too many internal 
             # details to leak into the log, otherwise any change in this code will 
             # reflect into the log and we need to change counts in Profiler
-            $null = Set-PSDebug -Trace 0
+            $dontRenameThisVariableItIsUsedForCorruptionAutodetection = Set-PSDebug -Trace 0
             $sw.Stop()
             if ([Profiler.Tracer]::HasTracer2) {
                 $null = [Profiler.Tracer]::Unregister()
@@ -183,13 +183,6 @@ function Measure-ScriptHarmony ($ScriptBlock) {
     $registerCommand = '$null = [Profiler.Tracer]::Register($tracer)'
     if (-not ($PSCommandPath -eq $firstLine.Path -and ($enableCommand -eq $firstLine.Text -or $registerCommand -eq $firstLine.Text))) { 
         Write-Warning "Event list is incomplete, it should start with '$enableCommand' or '$registerCommand' from within Profiler module, but instead starts with entry '$($firstLine.Text)', from '$($firstLine.Path)'. Are you running profiler in the code you are profiling?"
-    }
-
-    $lastLine = $result.Trace[-1]
-    $disableCommand = '$null = [Profiler.Tracer]::Unpatch()'
-    $unregisterCommand = '$null = [Profiler.Tracer]::Unregister()'
-    if (-not ($PSCommandPath -eq $lastLine.Path -and ($disableCommand -eq $lastLine.Text -or $unregisterCommand -eq $lastLine.Text))) { 
-        Write-Warning "Event list is incomplete, it should end with '$disableCommand' or '$unregisterCommand' from within Profiler module, but instead ends with entry '$($lastLine.Text)', from '$($lastLine.Path)'. Are you disabling trace mode in your code using Set-PSDebug -Trace 0 or using Remove-PSBreakpoint to remove all breakpoints?"
     }
 
     $result

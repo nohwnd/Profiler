@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Management.Automation;
 using System.Management.Automation.Host;
 using System.Management.Automation.Language;
@@ -13,6 +14,8 @@ public static class Tracer
     private static Action ResetUI;
     private static ITracer _tracer;
     private static ITracer _tracer2;
+
+    private static TraceLineInfo _lastTraceItem;
 
     public static bool IsEnabled { get; private set; }
 
@@ -33,7 +36,7 @@ public static class Tracer
         if (HasTracer2)
             throw new InvalidOperationException("Tracer2 is already present.");
 
-        // use tracer directly if it implements our interface, or wrap it in adapter, and call it's methods by reflection, to accomodate tracers that only match our signature but not type.
+        // use tracer directly if it implements our interface, or wrap it in adapter, and call it's methods by reflection, to accommodate tracers that only match our signature but not type.
         _tracer2 = tracer is ITracer ourTracerType ? ourTracerType : new ExternalTracerAdapter(tracer) ?? throw new ArgumentNullException(nameof(tracer));
         TraceLine(justTracer2: true);
     }
@@ -46,9 +49,24 @@ public static class Tracer
         if (!HasTracer2)
             throw new InvalidOperationException("Tracer2 is not present.");
 
-        TraceLine(justTracer2: true);
-        TraceLine(justTracer2: true);
+        TraceLine(justTracer2: true, storeTraceItem: false);
+        TraceLine(justTracer2: true, storeTraceItem: false);
         _tracer2 = null;
+
+        EnsureTracingWasNotCorrupted();
+    }
+
+    private static void EnsureTracingWasNotCorrupted()
+    {
+        // Code like Set-PSDebug -Trace 0, or Get-PSBreakPoint | Remove-PSBreakPoint will break the tracing, and we will lose data,
+        // the only line that is allowed to do that is $dontRenameThisVariableItIsUsedForCorruptionAutodetection = Set-PsDebug -Trace 0
+        // This line should be the second to last line that was executed. We re-enable the trace in Profiler, so the last line (::Unregister or ::Unpatch) is
+        // captured even when tracing is broken by user.
+        var corrupted = _lastTraceItem.Extent?.Text != null && _lastTraceItem.Extent.Text != "$dontRenameThisVariableItIsUsedForCorruptionAutodetection = Set-PsDebug -Trace 0";
+        if (corrupted)
+        {
+            throw new InvalidOperationException($"Trace was broken by: {_lastTraceItem.Extent.Text} from {_lastTraceItem.Extent.File}:{_lastTraceItem.Extent.StartLineNumber}");
+        }
     }
 
     public static void Patch(int version, EngineIntrinsics context, PSHostUserInterface ui, ITracer tracer)
@@ -64,7 +82,7 @@ public static class Tracer
         var externalUI = (PSHostUserInterface)externalUIField.GetValue(ui);
 
         // replace it with out patched up UI that writes to profiler on debug
-        externalUIField.SetValue(ui, new TracerHostUI(externalUI, () => TraceLine(false)));
+        externalUIField.SetValue(ui, new TracerHostUI(externalUI, () => TraceLine()));
 
         ResetUI = () =>
         {
@@ -161,7 +179,7 @@ public static class Tracer
                 object functionContext = lastFunctionContextMethod.Invoke(callStack, empty);
 
                 var executionContext = executionContextField.GetValue(functionContext);
-                var sessionState = (SessionState) sessionStateProperty.GetValue(executionContext, empty);
+                var sessionState = (SessionState)sessionStateProperty.GetValue(executionContext, empty);
                 var moduleName = sessionState.Module?.Name;
                 var functionName = (string)functionNameField.GetValue(functionContext);
                 var scriptBlock = (ScriptBlock)scriptBlockField.GetValue(functionContext);
@@ -184,19 +202,27 @@ public static class Tracer
         IsEnabled = false;
         // Add Set-PSDebug -Trace 0 event and also another one for the internal disable
         // this make first run more consistent for some reason
-        TraceLine();
-        TraceLine();
+        TraceLine(storeTraceItem: false);
+        TraceLine(storeTraceItem: false);
         ResetUI();
         _tracer = null;
         _tracer2 = null;
+
+        EnsureTracingWasNotCorrupted();
     }
 
     // keeping this public so I can write easier repros when something goes wrong, 
     // in that case we just need to patch, trace and unpatch and if that works then 
     // maybe the UI host does not work
-    public static void TraceLine(bool justTracer2 = false)
+    public static void TraceLine(bool justTracer2 = false, bool storeTraceItem = true)
     {
         var traceLineInfo = GetTraceLineInfo();
+        // Keep last tracing in memory so we can compare them when we unregister, or unpatch to detect corruption.
+        if (storeTraceItem)
+        {
+            _lastTraceItem = traceLineInfo;
+        }
+
         if (!justTracer2)
         {
             _tracer?.Trace(traceLineInfo.Extent, traceLineInfo.ScriptBlock, traceLineInfo.Level, traceLineInfo.FunctionName, traceLineInfo.ModuleName);
