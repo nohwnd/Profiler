@@ -5,14 +5,18 @@ using System.Management.Automation;
 using System.Management.Automation.Host;
 using System.Security;
 
+#if PESTER
+namespace Pester.Tracing;
+#else
 namespace Profiler;
+#endif
 
 internal class TracerHostUI : PSHostUserInterface
 {
-    private PSHostUserInterface _ui;
-    private Action _trace;
+    private readonly PSHostUserInterface _ui;
+    private readonly Action<string> _trace;
 
-    public TracerHostUI(PSHostUserInterface ui, Action trace)
+    public TracerHostUI(PSHostUserInterface ui, Action<string> trace)
     {
         _ui = ui;
         _trace = trace;
@@ -65,7 +69,7 @@ internal class TracerHostUI : PSHostUserInterface
         if (_trace == null)
             _ui.WriteDebugLine(message);
 
-        _trace();
+        _trace(message);
     }
 
     public override void WriteErrorLine(string value)

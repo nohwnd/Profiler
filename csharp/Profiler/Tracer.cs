@@ -1,59 +1,74 @@
 ﻿using System;
-using System.Linq;
 using System.Management.Automation;
 using System.Management.Automation.Host;
 using System.Management.Automation.Language;
 using System.Reflection;
-using NonGeneric = System.Collections;
 
+# if PESTER
+namespace Pester.Tracing;
+#else
 namespace Profiler;
+#endif
 
 public static class Tracer
 {
     private static Func<TraceLineInfo> GetTraceLineInfo;
-    private static Action ResetUI;
-    private static ITracer _tracer;
-    private static ITracer _tracer2;
+    private static TraceLineInfo LastTraceItem;
 
-    private static TraceLineInfo _lastTraceItem;
+    private static Action ResetUI = () => { };
+    /// <summary>
+    /// Primary tracer (slot1).
+    /// </summary>
+    public static ITracer Tracer1 { get; private set; }
 
-    public static bool IsEnabled { get; private set; }
+    /// <summary>
+    /// Secondary tracer (slot2).
+    /// </summary>
+    public static ITracer Tracer2 { get; private set; }
 
-    public static bool HasTracer2 => _tracer2 != null;
-
-    public static ProfilerTracer Patch(int version, EngineIntrinsics context, PSHostUserInterface ui)
+    /// <summary>
+    /// Check if we should call Register or Patch functions for the given tracer. It returns false when tracer is not present in slot 1,
+    /// or if overwrite is true (default) and slot 1 has the same tracer as what we are registering. Use overwrite to check the type of the registered tracer
+    /// and allow replacing it with the new tracer if the types are the same. (e.g you are adding tracer for Pester code coverage, and user aborted the run
+    /// so Pester tracer from the previous run is still present, and you are now replacing it with another Pester code coverage tracer). You would rarely want
+    /// overwrite set to false. But for example when you run Profiler in Profiler, you would want to register the second tracer into slot2 not even though slot1
+    /// has tracer of the same type.
+    /// </summary>
+    /// <param name="tracer">The tracer to use.</param>
+    /// <param name="overwrite">Allow overwriting the tracer in the main tracer slot if the tracer type we are adding is the same as the one that is already present.</param>
+    /// <returns></returns>
+    public static bool ShouldRegisterTracer(object tracer, bool overwrite = true)
     {
-        var tracer = new ProfilerTracer();
-        Patch(version, context, ui, tracer);
-        return tracer;
+        if (tracer is null)
+            throw new ArgumentNullException(nameof(tracer));
+
+        if (overwrite)
+        {
+            // if there is a tracer in slot 1, and it is not the same as we are providing
+            // we should use slot 2 and only register the tracer
+            return HasDifferentTracer(Tracer1, tracer);
+        }
+
+        // we have tracer in slot 1, use slot 2 by registering the tracer
+        return HasTracer(Tracer1);
     }
 
-    public static void Register(object tracer)
+    private static bool HasTracer(ITracer currentTracer)
     {
-        if (!IsEnabled)
-            throw new InvalidOperationException($"Tracer is not active, if you want to activate it call {nameof(Patch)}.");
-
-        if (HasTracer2)
-            throw new InvalidOperationException("Tracer2 is already present.");
-
-        // use tracer directly if it implements our interface, or wrap it in adapter, and call it's methods by reflection, to accommodate tracers that only match our signature but not type.
-        _tracer2 = tracer is ITracer ourTracerType ? ourTracerType : new ExternalTracerAdapter(tracer) ?? throw new ArgumentNullException(nameof(tracer));
-        TraceLine(justTracer2: true);
+        return currentTracer != null;
     }
 
-    public static void Unregister()
+    private static bool HasDifferentTracer(ITracer currentTracer, object newTracer)
     {
-        if (!IsEnabled)
-            throw new InvalidOperationException("Tracer is not active.");
+        if (currentTracer == null)
+            return false;
 
-        if (!HasTracer2)
-            throw new InvalidOperationException("Tracer2 is not present.");
+        if (currentTracer is ExternalTracerAdapter adapted)
+        {
+            return adapted.Tracer.GetType().Name != newTracer.GetType().Name;
+        }
 
-        TraceLine(justTracer2: true, storeTraceItem: false);
-        TraceLine(justTracer2: true, storeTraceItem: false);
-        _tracer2 = null;
-
-        EnsureTracingWasNotCorrupted();
+        return currentTracer.GetType().Name != newTracer.GetType().Name;
     }
 
     private static void EnsureTracingWasNotCorrupted()
@@ -62,32 +77,71 @@ public static class Tracer
         // the only line that is allowed to do that is $dontRenameThisVariableItIsUsedForCorruptionAutodetection = Set-PsDebug -Trace 0
         // This line should be the second to last line that was executed. We re-enable the trace in Profiler, so the last line (::Unregister or ::Unpatch) is
         // captured even when tracing is broken by user.
-        var corrupted = _lastTraceItem.Extent?.Text != null && _lastTraceItem.Extent.Text != "$dontRenameThisVariableItIsUsedForCorruptionAutodetection = Set-PsDebug -Trace 0";
+        var corrupted = LastTraceItem.Extent?.Text != null && LastTraceItem.Extent.Text != "$dontRenameThisVariableItIsUsedForCorruptionAutodetection = Set-PsDebug -Trace 0";
         if (corrupted)
         {
-            throw new InvalidOperationException($"Trace was broken by: {_lastTraceItem.Extent.Text} from {_lastTraceItem.Extent.File}:{_lastTraceItem.Extent.StartLineNumber}");
+            throw new InvalidOperationException($"Trace was broken by: {LastTraceItem.Extent.Text} from {LastTraceItem.Extent.File}:{LastTraceItem.Extent.StartLineNumber}");
         }
     }
 
-    public static void Patch(int version, EngineIntrinsics context, PSHostUserInterface ui, ITracer tracer)
+    /// <summary>
+    /// Add a tracer to already setup session (to slot2). A tracer must implement ITracer or have a method `void Trace(string message, IScriptExtent extent, ScriptBlock scriptBlock, int level)`.
+    /// </summary>
+    /// <param name="tracer"></param>
+    public static void Register(object tracer)
     {
-        if (IsEnabled)
-            throw new InvalidOperationException($"Tracer is already active, if you want to add another tracer call {nameof(Register)}.");
+        if (tracer is null)
+            throw new ArgumentNullException(nameof(tracer));
 
-        _tracer = tracer ?? throw new ArgumentNullException(nameof(tracer));
+        if (!HasTracer(Tracer1))
+            throw new InvalidOperationException($"Tracer1 is null. If you want to activate tracing call {nameof(Patch)}.");
 
-        var uiFieldName = version >= 6 ? "_externalUI" : "externalUI";
+        if (HasDifferentTracer(Tracer2, tracer))
+            throw new InvalidOperationException($"Tracer2 already has tracer {Tracer2.GetType().Name}, and you are registering {tracer.GetType().Name}.");
+
+        Tracer2 = tracer is ITracer t ? t : new ExternalTracerAdapter(tracer);
+
+        TraceLine(justTracer2: true);
+    }
+
+    /// <summary>
+    /// Unregister tracer from an already setup session (slot2).
+    /// </summary>
+    public static void Unregister()
+    {
+        TraceLine(justTracer2: true, storeTraceItem: false);
+        TraceLine(justTracer2: true, storeTraceItem: false);
+        Tracer2 = null;
+
+        EnsureTracingWasNotCorrupted();
+    }
+
+    /// <summary>
+    /// Enable tracing by patch the current session by replacing the UI host with another that triggers tracing on every statement. Set-PSDebug -Trace 1 needs to be called before this, and Set-PSDebug -Off needs to be called after Unpatch.
+    /// </summary>
+    /// <param name="powerShellVersion">Major PSVersion that is used `$PSVersionTable.PSVersion.Major`</param>
+    /// <param name="context">ExecutionContext to be used `$ExecutionContext`</param>
+    /// <param name="ui">UIHost to be replaced. `$host.UI`</param>
+    /// <param name="tracer">The tracer to be used. For example ProfilerTracer.</param>
+    public static void Patch(int powerShellVersion, EngineIntrinsics context, PSHostUserInterface ui, ITracer tracer)
+    {
+        if (context is null)
+            throw new ArgumentNullException(nameof(context));
+
+        if (ui is null)
+            throw new ArgumentNullException(nameof(ui));
+
+        Tracer1 = tracer ?? throw new ArgumentNullException(nameof(tracer));
+
+        var uiFieldName = powerShellVersion >= 6 ? "_externalUI" : "externalUI";
         // we get InternalHostUserInterface, grab external ui from that and replace it with ours
         var externalUIField = ui.GetType().GetField(uiFieldName, BindingFlags.Instance | BindingFlags.NonPublic);
         var externalUI = (PSHostUserInterface)externalUIField.GetValue(ui);
 
         // replace it with out patched up UI that writes to profiler on debug
-        externalUIField.SetValue(ui, new TracerHostUI(externalUI, () => TraceLine()));
+        externalUIField.SetValue(ui, new TracerHostUI(externalUI, (message) => TraceLine(message, false)));
 
-        ResetUI = () =>
-        {
-            externalUIField.SetValue(ui, externalUI);
-        };
+        ResetUI = () => externalUIField.SetValue(ui, externalUI);
 
         // getting MethodInfo of context._context.Debugger.TraceLine
         var bf = BindingFlags.NonPublic | BindingFlags.Instance;
@@ -101,95 +155,39 @@ public static class Tracer
         var callStackType = _callStack.GetType();
 
         var countBindingFlags = BindingFlags.Instance | BindingFlags.NonPublic;
-        if (version == 3)
-        {
-            // in PowerShell 3 callstack is List<CallStackInfo> not a struct CallStackList 
-            // Count is public property
-            countBindingFlags = BindingFlags.Instance | BindingFlags.Public;
-        }
         var countProperty = callStackType.GetProperty("Count", countBindingFlags);
         var getCount = countProperty.GetMethod;
         var empty = new object[0];
         var stack = callStackField.GetValue(debugger);
         var initialLevel = (int)getCount.Invoke(stack, empty);
 
-        if (version == 3)
+        var lastFunctionContextMethod = callStackType.GetMethod("LastFunctionContext", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        object functionContext1 = lastFunctionContextMethod.Invoke(callStackField.GetValue(debugger), empty);
+        var functionContextType = functionContext1.GetType();
+        var functionNameField = functionContextType.GetField("_functionName", BindingFlags.Instance | BindingFlags.NonPublic);
+        var executionContextField = functionContextType.GetField("_executionContext", BindingFlags.Instance | BindingFlags.NonPublic);
+        var sessionStateProperty = executionContextField.FieldType.GetProperty("SessionState", BindingFlags.Instance | BindingFlags.NonPublic);
+        var scriptBlockField = functionContextType.GetField("_scriptBlock", BindingFlags.Instance | BindingFlags.NonPublic);
+        var currentPositionProperty = functionContextType.GetProperty("CurrentPosition", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        var scriptBlock1 = (ScriptBlock)scriptBlockField.GetValue(functionContext1);
+        var extent1 = (IScriptExtent)currentPositionProperty.GetValue(functionContext1);
+
+        GetTraceLineInfo = () =>
         {
-            // we do the same operation as in the TraceLineAction below, but here 
-            // we resolve the static things like types and properties, and then in the 
-            // action we just use them to get the live data without the overhead of looking 
-            // up properties all the time. This might be internally done in the reflection code
-            // did not measure the impact, and it is probably done for us in the reflection api itself
-            // in modern verisons of runtime
-            var callStack1 = callStackField.GetValue(debugger);
-            var callStackList1 = (NonGeneric.IList)callStack1;
-            var level1 = callStackList1.Count - initialLevel;
-            var last1 = callStackList1[callStackList1.Count - 1];
-            var lastType = last1.GetType();
-            var functionContextProperty = lastType.GetProperty("FunctionContext", BindingFlags.NonPublic | BindingFlags.Instance);
-            var functionContext1 = functionContextProperty.GetValue(last1);
-            var functionContextType = functionContext1.GetType();
+            var callStack = callStackField.GetValue(debugger);
+            var level = (int)getCount.Invoke(callStack, empty) - initialLevel;
+            object functionContext = lastFunctionContextMethod.Invoke(callStack, empty);
+            var executionContext = executionContextField.GetValue(functionContext);
+            var sessionState = (SessionState)sessionStateProperty.GetValue(executionContext, empty);
+            var moduleName = sessionState.Module?.Name;
+            var functionName = (string)functionNameField.GetValue(functionContext);
+            var scriptBlock = (ScriptBlock)scriptBlockField.GetValue(functionContext);
+            var extent = (IScriptExtent)currentPositionProperty.GetValue(functionContext);
 
-            var scriptBlockField = functionContextType.GetField("_scriptBlock", BindingFlags.Instance | BindingFlags.NonPublic);
-            var functionNameField = functionContextType.GetField("_functionName", BindingFlags.Instance | BindingFlags.NonPublic);
-            var executionContextField = functionContextType.GetField("_executionContext", BindingFlags.Instance | BindingFlags.NonPublic);
-            var sessionStateProperty = executionContextField.FieldType.GetProperty("SessionState", BindingFlags.Instance | BindingFlags.NonPublic);
-            var currentPositionProperty = functionContextType.GetProperty("CurrentPosition", BindingFlags.Instance | BindingFlags.NonPublic);
-
-            var scriptBlock1 = (ScriptBlock)scriptBlockField.GetValue(functionContext1);
-            var extent1 = (IScriptExtent)currentPositionProperty.GetValue(functionContext1);
-
-            GetTraceLineInfo = () =>
-            {
-                var callStack = callStackField.GetValue(debugger);
-                var callStackList = (NonGeneric.IList)callStack;
-                var level = callStackList.Count - initialLevel;
-                var last = callStackList[callStackList.Count - 1];
-                var functionContext = functionContextProperty.GetValue(last);
-
-                string functionName = (string)functionNameField.GetValue(functionContext);
-                var executionContext = executionContextField.GetValue(functionContext);
-                var sessionState = (SessionState)sessionStateProperty.GetValue(executionContext, empty);
-                var moduleName = sessionState.Module?.Name;
-                var scriptBlock = (ScriptBlock)scriptBlockField.GetValue(functionContext);
-                var extent = (IScriptExtent)currentPositionProperty.GetValue(functionContext);
-
-                return new TraceLineInfo(extent, scriptBlock, level, functionName, moduleName);
-            };
-        }
-        else
-        {
-            var lastFunctionContextMethod = callStackType.GetMethod("LastFunctionContext", BindingFlags.Instance | BindingFlags.NonPublic);
-
-            object functionContext1 = lastFunctionContextMethod.Invoke(callStackField.GetValue(debugger), empty);
-            var functionContextType = functionContext1.GetType();
-            var functionNameField = functionContextType.GetField("_functionName", BindingFlags.Instance | BindingFlags.NonPublic);
-            var executionContextField = functionContextType.GetField("_executionContext", BindingFlags.Instance | BindingFlags.NonPublic);
-            var sessionStateProperty = executionContextField.FieldType.GetProperty("SessionState", BindingFlags.Instance | BindingFlags.NonPublic);
-            var scriptBlockField = functionContextType.GetField("_scriptBlock", BindingFlags.Instance | BindingFlags.NonPublic);
-            var currentPositionProperty = functionContextType.GetProperty("CurrentPosition", BindingFlags.Instance | BindingFlags.NonPublic);
-
-            var scriptBlock1 = (ScriptBlock)scriptBlockField.GetValue(functionContext1);
-            var extent1 = (IScriptExtent)currentPositionProperty.GetValue(functionContext1);
-
-            GetTraceLineInfo = () =>
-            {
-                var callStack = callStackField.GetValue(debugger);
-                var level = (int)getCount.Invoke(callStack, empty) - initialLevel;
-                object functionContext = lastFunctionContextMethod.Invoke(callStack, empty);
-
-                var executionContext = executionContextField.GetValue(functionContext);
-                var sessionState = (SessionState)sessionStateProperty.GetValue(executionContext, empty);
-                var moduleName = sessionState.Module?.Name;
-                var functionName = (string)functionNameField.GetValue(functionContext);
-                var scriptBlock = (ScriptBlock)scriptBlockField.GetValue(functionContext);
-                var extent = (IScriptExtent)currentPositionProperty.GetValue(functionContext);
-
-                return new TraceLineInfo(extent, scriptBlock, level, functionName, moduleName);
-            };
-        }
-
-        IsEnabled = true;
+            return new TraceLineInfo(extent, scriptBlock, level, functionName, moduleName);
+        };
 
         // Add another event to the top apart from the ScriptBlock invocation
         // in Trace-ScriptInternal, this makes it more consistently work on first
@@ -197,37 +195,40 @@ public static class Tracer
         TraceLine();
     }
 
+    /// <summary>
+    /// Put the original UI host in place and stop tracing.  Set-PSDebug -Trace 0 (or Set-PSDebug -Off) needs to be called before this.
+    /// </summary>
     public static void Unpatch()
     {
-        IsEnabled = false;
         // Add Set-PSDebug -Trace 0 event and also another one for the internal disable
         // this make first run more consistent for some reason
         TraceLine(storeTraceItem: false);
         TraceLine(storeTraceItem: false);
         ResetUI();
-        _tracer = null;
-        _tracer2 = null;
+        Tracer1 = null;
+        Tracer2 = null;
 
         EnsureTracingWasNotCorrupted();
     }
 
-    // keeping this public so I can write easier repros when something goes wrong, 
-    // in that case we just need to patch, trace and unpatch and if that works then 
-    // maybe the UI host does not work
-    public static void TraceLine(bool justTracer2 = false, bool storeTraceItem = true)
+    private static void TraceLine(string message = null, bool justTracer2 = false, bool storeTraceItem = false)
     {
+        if (GetTraceLineInfo == null)
+            return;
+
         var traceLineInfo = GetTraceLineInfo();
+
         // Keep last tracing in memory so we can compare them when we unregister, or unpatch to detect corruption.
         if (storeTraceItem)
         {
-            _lastTraceItem = traceLineInfo;
+            LastTraceItem = traceLineInfo;
         }
 
         if (!justTracer2)
         {
-            _tracer?.Trace(traceLineInfo.Extent, traceLineInfo.ScriptBlock, traceLineInfo.Level, traceLineInfo.FunctionName, traceLineInfo.ModuleName);
+            Tracer1?.Trace(message, traceLineInfo.Extent, traceLineInfo.ScriptBlock, traceLineInfo.Level, traceLineInfo.FunctionName, traceLineInfo.ModuleName);
         }
-        _tracer2?.Trace(traceLineInfo.Extent, traceLineInfo.ScriptBlock, traceLineInfo.Level, traceLineInfo.FunctionName, traceLineInfo.ModuleName);
+        Tracer2?.Trace(message, traceLineInfo.Extent, traceLineInfo.ScriptBlock, traceLineInfo.Level, traceLineInfo.FunctionName, traceLineInfo.ModuleName);
     }
 
     private struct TraceLineInfo
