@@ -172,8 +172,8 @@ function Trace-Script {
         $ticks = if (0 -ne $total.Ticks) { $total.Ticks } else { 1 }
         $line.Percent = [Math]::Round($line.Duration.Ticks / $ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
         $line.SelfPercent = [Math]::Round($line.SelfDuration.Ticks / $ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
-        $line.MemoryPercent = [Math]::Round($line.Memory / $totalMem, 5, [System.MidpointRounding]::AwayFromZero) * 100
-        $line.SelfMemoryPercent = [Math]::Round($line.SelfMemory / $totalMem, 5, [System.MidpointRounding]::AwayFromZero) * 100
+        $line.MemoryPercent = if (0 -ne $totalMem) { [Math]::Round($line.Memory / $totalMem, 5, [System.MidpointRounding]::AwayFromZero) * 100 } else { 100 } 
+        $line.SelfMemoryPercent = if (0 -ne $totalMem) { [Math]::Round($line.SelfMemory / $totalMem, 5, [System.MidpointRounding]::AwayFromZero) * 100 } else { 100 }
         $line
     }
     Write-TimeAndRestart $sw
