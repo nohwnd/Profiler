@@ -1,3 +1,0 @@
-﻿
-
-$t.Top50SelfMemory | ft @{ n = "SelfDuration"; e = { $_.SelfDuration.ToString("mm\:ss\.ffff") + (" ($([math]::Round($_.SelfPercent, 2).ToString().PadRight(4, '0'))%) ".PadLeft(0, ' '))}}, @{ n = "Duration"; e = { $_.Duration.ToString("mm\:ss\.ffff")  + (" ($([math]::Round($_.Percent, 2).ToString().PadRight(4, '0')) %) ".PadLeft(0, ' ')) }}, @{ n = "SelfMemory"; e = { "$([math]::Round($_.SelfMemory/1mb,2))MB" + (" ($([math]::Round($_.SelfMemoryPercent, 2).ToString().PadRight(4, '0')) %) ".PadLeft(0, ' '))}}, @{ n = "Memory"; e = { "$([math]::Round($_.Memory/1mb,2))MB" + (" ($([math]::Round($_.MemoryPercent, 2).ToString().PadRight(4, '0')) %) ".PadLeft(0, ' '))}}, SelfGc, Gc, HitCount, File, Line, Module, Function, Text
