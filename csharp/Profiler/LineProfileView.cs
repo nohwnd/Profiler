@@ -24,7 +24,7 @@ public abstract class LineProfileView
     /// <summary>
     /// Percent of total duration used by line including all the code it calls.
     /// </summary>
-    public double Percent => _line.Percent;
+    public decimal Percent => _line.Percent;
 
     /// <summary>
     /// Time used by line including subcalls.
@@ -35,7 +35,7 @@ public abstract class LineProfileView
     /// <summary>
     /// Percent of total duration used by line, excluding the code it calls.
     /// </summary>
-    public double SelfPercent => _line.SelfPercent;
+    public decimal SelfPercent => _line.SelfPercent;
 
     /// <summary>
     /// Time used exclusively by this line.
@@ -45,22 +45,22 @@ public abstract class LineProfileView
     /// <summary>
     /// Percent of total memory used by line including all the code it calls.
     /// </summary>
-    public double MemoryPercent => _line.MemoryPercent;
+    public decimal MemoryPercent => _line.MemoryPercent;
 
     /// <summary>
     /// Memory used by this line.
     /// </summary>
-    public long Memory => _line.Memory;
+    public decimal Memory => _line.Memory;
 
     /// <summary>
     /// Percent of total memory used by line.
     /// </summary>
-    public double SelfMemoryPercent => _line.SelfMemoryPercent;
+    public decimal SelfMemoryPercent => _line.SelfMemoryPercent;
 
     /// <summary>
     /// Memory used exclusively by this line.
     /// </summary>
-    public long SelfMemory => _line.SelfMemory;
+    public decimal SelfMemory => _line.SelfMemory;
 
     /// <summary>
     /// Garbage collection count that happened on this line.
@@ -77,7 +77,7 @@ public abstract class LineProfileView
     /// <summary>
     /// Number of hits on line.
     /// </summary>
-    public uint HitCount => _line.HitCount;
+    public int HitCount => _line.HitCount;
 
     /// <summary>
     /// Name of file or id of ScriptBlock the line belongs to.
@@ -87,7 +87,7 @@ public abstract class LineProfileView
     /// <summary>
     /// Line number in the file or ScriptBlock.
     /// </summary>
-    public uint? Line => _line.Line;
+    public int? Line => _line.Line;
 
     /// <summary>
     /// Function that called this line.
@@ -117,5 +117,5 @@ public abstract class LineProfileView
     /// <summary>
     /// All command hits in this line using column as key.
     /// </summary>
-    public IDictionary<uint, CommandHit> CommandHits => _line.CommandHits;
+    public IDictionary<int, CommandHit> CommandHits => _line.CommandHits;
 }

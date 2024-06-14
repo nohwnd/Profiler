@@ -8,7 +8,7 @@
 RootModule = 'Profiler.psm1'
 
 # Version number of this module.
-ModuleVersion = '4.2.0'
+ModuleVersion = '4.3.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -26,10 +26,10 @@ CompanyName = 'nohwnd'
 Copyright = '(c) nohwnd. All rights reserved.'
 
 # Description of the functionality provided by this module
-Description = 'Script, ScriptBlock and module performance profiler for PowerShell 5, and PowerShell 7.'
+Description = 'Script, ScriptBlock and module performance profiler for PowerShell 5.1, and PowerShell 7.'
 
 # Minimum version of the PowerShell engine required by this module
-PowerShellVersion = '5.0.0'
+PowerShellVersion = '5.1.0'
 
 # Name of the PowerShell host required by this module
 # PowerShellHostName = ''

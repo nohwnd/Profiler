@@ -11,7 +11,7 @@ public class LineProfile
     /// <summary>
     /// Percent of total duration used by line including all the code it calls.
     /// </summary>
-    public double Percent { get; set; } = 0.00;
+    public decimal Percent { get; set; } = 0;
 
     /// <summary>
     /// Time used by line including subcalls.
@@ -22,7 +22,7 @@ public class LineProfile
     /// <summary>
     /// Percent of total duration used by line, excluding the code it calls.
     /// </summary>
-    public double SelfPercent { get; set; } = 0.00;
+    public decimal SelfPercent { get; set; } = 0;
 
     /// <summary>
     /// Time used exclusively by this line.
@@ -33,22 +33,22 @@ public class LineProfile
     /// <summary>
     /// Percent of total memory used by line including all the code it calls.
     /// </summary>
-    public double MemoryPercent { get; set; } = 0.00;
+    public decimal MemoryPercent { get; set; } = 0;
 
     /// <summary>
     /// Memory consumed by line and all subcalls.
     /// </summary>
-    public long Memory { get; set; }
+    public decimal Memory { get; set; }
 
     /// <summary>
     /// Percent of total memory used by line, excluding the code it calls.
     /// </summary>
-    public double SelfMemoryPercent { get; set; } = 0.00;
+    public decimal SelfMemoryPercent { get; set; } = 0;
 
     /// <summary>
     /// Memory consumed exclusively by this line.
     /// </summary>
-    public long SelfMemory { get; set; }
+    public decimal SelfMemory { get; set; }
 
     /// <summary>
     /// Garbage collections happening on this line and in all subcalls (all generations).
@@ -64,7 +64,7 @@ public class LineProfile
     /// <summary>
     /// Number of hits on line.
     /// </summary>
-    public uint HitCount { get; set; } = 0;
+    public int HitCount { get; set; } = 0;
 
     /// <summary>
     /// Name of file or id of ScriptBlock the line belongs to.
@@ -74,7 +74,7 @@ public class LineProfile
     /// <summary>
     /// Line number in the file or ScriptBlock.
     /// </summary>
-    public uint? Line { get; set; }
+    public int? Line { get; set; }
 
     /// <summary>
     /// Function that called this line.
@@ -104,5 +104,5 @@ public class LineProfile
     /// <summary>
     /// All command hits in this line using column as key.
     /// </summary>
-    public IDictionary<uint, CommandHit> CommandHits { get; set; } = new Dictionary<uint, CommandHit>();
+    public IDictionary<int, CommandHit> CommandHits { get; set; } = new Dictionary<int, CommandHit>();
 }

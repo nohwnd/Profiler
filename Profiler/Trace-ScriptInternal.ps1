@@ -64,7 +64,8 @@ function Trace-ScriptInternal {
 
     $out.Stopwatch = $result.Stopwatch
     $out.ScriptBlocks = $result.ScriptBlocks
-    Write-Host -Foreground Magenta "Tracing done. Got $($trace.Count) trace events."
+    $traceCount = $result.Trace.Count - 4 # 2 first and 2 last events are internal events of Profiler
+    Write-Host -Foreground Magenta "Tracing done. Got $($traceCount) trace events."
     $result
 }
 

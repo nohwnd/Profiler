@@ -11,16 +11,20 @@
           <ListEntry>
             <ListItems>
               <ListItem>
-                <Label>Top50Duration</Label>
-                <ScriptBlock>'List top 50 lines based on duration'</ScriptBlock>
+                <Label>Top50SelfDuration</Label>
+                <ScriptBlock>'List top 50 lines based on time consumed directly by the line'</ScriptBlock>
+              </ListItem>
+              <ListItem>
+                <Label>Top50SelfMemory</Label>
+                <ScriptBlock>'List top 50 lines based on the memory consumed directly by the line'</ScriptBlock>
               </ListItem>
               <ListItem>
                 <Label>Top50HitCount</Label>
                 <ScriptBlock>'List top 50 lines based on hit count'</ScriptBlock>
               </ListItem>
               <ListItem>
-                <Label>Top50SelfDuration</Label>
-                <ScriptBlock>'List top 50 lines based on time consumed directly by the line'</ScriptBlock>
+                <Label>Top50Duration</Label>
+                <ScriptBlock>'List top 50 lines based on duration'</ScriptBlock>
               </ListItem>
               <ListItem>
                 <Label>Top50FunctionDuration</Label>
@@ -39,10 +43,6 @@
                 <ScriptBlock>'List top 50 lines based on the memory consumed'</ScriptBlock>
               </ListItem>
               <ListItem>
-                <Label>Top50SelfMemory</Label>
-                <ScriptBlock>'List top 50 lines based on the memory consumed directly by the line'</ScriptBlock>
-              </ListItem>
-              <ListItem>
                 <Label>AllLines</Label>
                 <ScriptBlock>'Show all lines processed by profiler trace'</ScriptBlock>
               </ListItem>
@@ -55,6 +55,9 @@
               </ListItem>
               <ListItem>
                 <PropertyName>StopwatchDuration</PropertyName>
+              </ListItem>
+              <ListItem>
+                <PropertyName>ScriptBlock</PropertyName>
               </ListItem>
             </ListItems>
           </ListEntry>

@@ -143,7 +143,7 @@ function Trace-Script {
     $trace = $result.Trace
 
     $scriptBlocks = $out.ScriptBlocks
-    $traceCount = $trace.Count
+    $traceCount = $trace.Count-4 # 2 first and 2 last events are internal events of Profiler
 
     Write-Host -ForegroundColor Magenta "Processing $($traceCount) trace events. $(if (1000000 -lt $traceCount) { "This might take a while..."})"
 
@@ -174,6 +174,8 @@ function Trace-Script {
         $line.SelfPercent = [Math]::Round($line.SelfDuration.Ticks / $ticks, 5, [System.MidpointRounding]::AwayFromZero) * 100
         $line.MemoryPercent = if (0 -ne $totalMem) { [Math]::Round($line.Memory / $totalMem, 5, [System.MidpointRounding]::AwayFromZero) * 100 } else { 100 } 
         $line.SelfMemoryPercent = if (0 -ne $totalMem) { [Math]::Round($line.SelfMemory / $totalMem, 5, [System.MidpointRounding]::AwayFromZero) * 100 } else { 100 }
+        $line.Memory = [Math]::Round($line.Memory, 5, [System.MidpointRounding]::AwayFromZero)
+        $line.SelfMemory = [Math]::Round($line.SelfMemory, 5, [System.MidpointRounding]::AwayFromZero)
         $line
     }
     Write-TimeAndRestart $sw
@@ -266,6 +268,7 @@ function Trace-Script {
     # this way we can get the partial object out for 
     # debugging when this fails on someones system
     $script:processedTrace = [Profiler.Trace]::new()
+    $script:processedTrace.ScriptBlock = $ScriptBlock
     $script:processedTrace.TotalDuration = $total
     $script:processedTrace.StopwatchDuration = $out.Stopwatch
     $script:processedTrace.Events = $trace

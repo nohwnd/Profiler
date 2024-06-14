@@ -10,17 +10,17 @@ public class CommandHit
     /// <summary>
     /// Line number of the command in the file or ScriptBlock.
     /// </summary>
-    public uint Line { get; set; }
+    public int Line { get; set; }
 
     /// <summary>
     /// Column of the command in the file or ScriptBlock.
     /// </summary>
-    public uint Column { get; set; }
+    public int Column { get; set; }
 
     /// <summary>
     /// Number of hits on command.
     /// </summary>
-    public uint HitCount { get; set; } = 1;
+    public int HitCount { get; set; } = 1;
 
     /// <summary>
     /// Time used exclusively by this command
@@ -34,8 +34,8 @@ public class CommandHit
 
     public CommandHit(Hit hit)
     {
-        Line         = (uint)hit.Line;
-        Column       = (uint)hit.Column;
+        Line         = (int)hit.Line;
+        Column       = (int)hit.Column;
         SelfDuration = hit.SelfDuration;
         Text         = hit.Text;
     }

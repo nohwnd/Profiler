@@ -46,13 +46,20 @@ public class ProfilerTracer : ITracer
     // timespan ticks are 10k per millisecond, but the stopwatch can have different resolution
     // calculate the diff between the timestamps and convert it to 10k per ms ticks
     //
-    // cast the frequency to double to avoid whole number division. On systems where frequency 
+    // cast the frequency to decimal to avoid whole number division. On systems where frequency 
     // is smaller than ticks per second this otherwise results in 0, and all timestamps then
     // become positive infinity because of timestamp / 0 = ∞ or when cast to long: -9223372036854775808
-    private static double _tickDivider = ((double)Stopwatch.Frequency) / TimeSpan.TicksPerSecond;
+    private static decimal _tickDivider = ((decimal)Stopwatch.Frequency) / TimeSpan.TicksPerSecond;
     private const string ScriptBlockName = "<ScriptBlock>";
+    private readonly bool _usePreciseMemoryMeasurement;
     internal int _index = 0;
     internal Hit _previousHit;
+    internal readonly decimal _megaByte = 1024 * 1024;
+
+    public ProfilerTracer()
+    {
+        _usePreciseMemoryMeasurement = Environment.GetEnvironmentVariable("POWERSHELL_PROFILER_PRECISE_MEMORY_MEASUREMENT") == "1";
+    }
 
     public List<Hit> Hits { get; } = new List<Hit>();
     public Dictionary<Guid, ScriptBlock> ScriptBlocks { get; } = new Dictionary<Guid, ScriptBlock>();
@@ -75,9 +82,9 @@ public class ProfilerTracer : ITracer
         var gc2 = GC.CollectionCount(2);
 
 #if NET5_0_OR_GREATER
-        var allocatedBytes = GC.GetTotalAllocatedBytes(precise: false);
+        var allocatedBytes = GC.GetTotalAllocatedBytes(precise: _usePreciseMemoryMeasurement) / _megaByte;
 #else
-        var allocatedBytes = GC.GetTotalMemory(forceFullCollection: false);
+        var allocatedBytes = GC.GetTotalMemory(forceFullCollection: false) / _megaByte;
 #endif
 
         // we are using structs so we need to insert the final struct to the 
@@ -144,7 +151,7 @@ public class ProfilerTracer : ITracer
     }
 
     private void SetSelfValuesAndAddToHits(ref Hit eventRecord, long timestamp,
-        long workingSet, long heapSize, long allocatedBytes,
+        decimal workingSet, decimal heapSize, decimal allocatedBytes,
         int gc0, int gc1, int gc2)
     {
         eventRecord.SelfWorkingSet = workingSet - eventRecord.WorkingSet;

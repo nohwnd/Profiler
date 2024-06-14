@@ -8,6 +8,6 @@ public class SpeedScopeProfile
     public string Name { get; set; }
     public string Unit { get; set; }
     public int StartValue { get; set; }
-    public double EndValue { get; set; }
+    public decimal EndValue { get; set; }
     public List<SpeedScopeEvent> Events { get; set; }
 }

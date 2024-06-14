@@ -7,7 +7,7 @@ using System.IO;
 
 namespace Profiler.SpeedScope;
 
-public class SpeedScope
+public static class SpeedScope
 {
     private static Flow[] _justCall = [Flow.Call];
     private static Flow[] _callAndReturn = [Flow.Call, Flow.Return];
@@ -47,7 +47,7 @@ public class SpeedScope
             Name = $"{process.ProcessName} ({process.Id}) Time={Math.Round(trace.TotalDuration.TotalMilliseconds, 5)}ms",
             Unit = "milliseconds",
             StartValue = 0,
-            EndValue = Math.Round(trace.Events[trace.Events.Count - 2].StartTime.TotalMilliseconds - trace.Events[2].StartTime.TotalMilliseconds, 5),
+            EndValue = Math.Round((decimal)( trace.Events[trace.Events.Count - 2].StartTime.TotalMilliseconds - trace.Events[2].StartTime.TotalMilliseconds), 5),
             Events = events
         };
 
@@ -178,7 +178,7 @@ public class SpeedScope
                     {
                         Type = flow == Flow.Call ? "O" : "C",
                         Frame = index,
-                        At = Math.Round(at.TotalMilliseconds, 5),
+                        At = Math.Round((decimal)at.TotalMilliseconds, 5),
                     });
                 }
             }

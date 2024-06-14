@@ -71,7 +71,7 @@ public static partial class Profiler {
                 lineProfile = new LineProfile
                 {
                     File = file.Name,
-                    Line = (uint)lineNumber,
+                    Line = (int)lineNumber,
                     Text = text,
                     Function = hit.Function,
                     Module = hit.Module,
@@ -141,10 +141,10 @@ public static partial class Profiler {
             // on the same line so we can see which commands contributed to the line duration
             // if we need to count duration we can do it by moving this to the next part of the code
             // where we process each hit on the line
-            if (!lineProfile.CommandHits.TryGetValue((uint)hit.Column, out var commandHit))
+            if (!lineProfile.CommandHits.TryGetValue((int)hit.Column, out var commandHit))
             {
                 commandHit = new CommandHit(hit);
-                lineProfile.CommandHits.Add((uint)hit.Column, commandHit);
+                lineProfile.CommandHits.Add((int)hit.Column, commandHit);
             }
             else
             {

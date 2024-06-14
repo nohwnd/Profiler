@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Management.Automation;
 
 namespace Profiler;
 
@@ -19,6 +20,7 @@ public class Trace
     public FunctionHitCountView[] Top50FunctionHitCount { get; set; }
     public FunctionSelfDurationView[] Top50FunctionSelfDuration { get; set; }
 
+    public ScriptBlock ScriptBlock { get; set; }
     public TimeSpan TotalDuration { get; set; }
     public TimeSpan StopwatchDuration { get; set; }
     public LineProfile[] AllLines { get; set; }

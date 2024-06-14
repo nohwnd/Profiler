@@ -85,22 +85,23 @@ public struct Hit
 
     public bool Folded;
 
-    // HeapSize at the start of the hit.
-    public long HeapSize;
+    // HeapSize at the start of the hit in MB.
+    public decimal HeapSize;
 
-    // WorkingSet at the start of the hit.
-    public long WorkingSet;
+    // WorkingSet at the start of the hit in MB.
+    public decimal WorkingSet;
 
-    // HeapSize heapSize consumed by the hit (endHeapSize - startHeapSize).
-    public long SelfHeapSize;
+    // HeapSize heapSize consumed by the hit (endHeapSize - startHeapSize) in MB.
+    public decimal SelfHeapSize;
 
-    // Working set consumed by the hit.
-    public long SelfWorkingSet;
+    // Working set consumed by the hit in MB.
+    public decimal SelfWorkingSet;
 
-    // Working set consumed by the hit.
-    public long AllocatedBytes;
+    // Working set consumed by the hit in MB.
+    public decimal AllocatedBytes;
 
-    public long SelfAllocatedBytes;
+    // Bytes allocated by this hit in MB.
+    public decimal SelfAllocatedBytes;
 
     public int Gc0;
     public int SelfGc0;
@@ -112,6 +113,6 @@ public struct Hit
     public int SelfGc2;
 
 
-    public long TotalBytes;
+    public decimal TotalBytes;
     public int  TotalGc;
 }
