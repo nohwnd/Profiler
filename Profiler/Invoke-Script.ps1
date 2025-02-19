@@ -202,7 +202,7 @@ function Invoke-Script {
                 $afterColor = "Green"
             }
 
-            Write-Host -NoNewline "Run $(${r}/2): "
+            Write-Host -NoNewline "Run $(${r}/2+1): "
             Write-Host -ForegroundColor $beforeColor $b.SelfDuration -NoNewline 
             Write-Host -NoNewline " -> "
             Write-Host -ForegroundColor $afterColor $a.SelfDuration -NoNewline 
