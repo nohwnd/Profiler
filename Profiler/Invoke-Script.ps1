@@ -6,10 +6,10 @@ function Invoke-Script {
     .PARAMETER ScriptBlock
     A ScriptBlock to be executed.
 
-    $trace = Invoke-Script -ScriptBlock { Import-Module $PSScriptRoot\Planets.psm1; Get-Planet } -Repeat 3
+    Invoke-Script -ScriptBlock { Import-Module $PSScriptRoot\Planets.psm1; Get-Planet } -Repeat 3
 
     When running a script file use the same syntax, you can specify parameters if you need: 
-    $trace = Invoke-Script -ScriptBlock { & $PSScriptRoot\MyScript.ps1 } -Repeat 3
+    Invoke-Script -ScriptBlock { & $PSScriptRoot\MyScript.ps1 } -Repeat 3
 
     .PARAMETER Repeat
     Run the provided script or command this many times in the same session. Default is 1. 
