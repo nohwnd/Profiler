@@ -20,7 +20,7 @@ stages:
         workspace:
           clean: all
         pool:
-          vmImage: windows-2022
+          vmImage: windows-latest
         steps:
           - task: PowerShell@2
             displayName: 'Build Profiler'
@@ -51,16 +51,16 @@ stages:
         strategy:
           matrix:
             PS7_Windows:
-              vmImage: windows-2022
+              vmImage: windows-latest
               pwsh: true
             PS_5_1_Windows:
-              vmImage: windows-2022
+              vmImage: windows-latest
               pwsh: false
             PS7_Ubuntu:
-              vmImage: ubuntu-20.04
+              vmImage: ubuntu-latest
               pwsh: true
             PS7_macOS:
-              vmImage: macOS-11
+              vmImage: macOS-latest
               pwsh: true
         pool:
           vmImage: $[ variables['vmImage'] ]
