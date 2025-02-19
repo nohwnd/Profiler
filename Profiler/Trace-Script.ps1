@@ -24,7 +24,7 @@ function Trace-Script {
     $trace = Trace-Script -ScriptBlock { Import-Module $PSScriptRoot\Planets.psm1; Get-Planet }
 
     When running a script file use the same syntax, you can specify parameters if you need:
-    $trace = Invoke-Script -ScriptBlock { & $PSScriptRoot\MyScript.ps1 }
+    $trace = Trace-Script -ScriptBlock { & $PSScriptRoot\MyScript.ps1 }
 
     .PARAMETER Preheat
     Run the provided script or command this many times without tracing it to warm up the session.
